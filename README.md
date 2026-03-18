@@ -1,80 +1,80 @@
-# 👻 GHOST — AI Interview Copilot
+# GHOST
 
-**Invisible during screen sharing.** Real-time screen capture, voice input, and AI-powered coding assistance — all undetectable.
+A lightweight Electron overlay app for real-time AI-powered coding assistance. Built as a personal project to explore Electron's native OS APIs, multimodal AI integration, and desktop UI engineering.
 
----
+## What it does
 
-## 🚀 Setup
+GHOST sits as a floating overlay on your desktop. You can feed it coding problems — by typing, pasting, using voice input, or capturing your screen — and it returns explanations, hints, or full solutions powered by Groq's LLM API.
 
-### 1. Prerequisites
-- **Node.js** — Download from [nodejs.org](https://nodejs.org)
+### Key features
 
-### 2. Install & Launch
+- **Screen capture & vision analysis** — captures the screen and sends it to a vision model (`llama-4-scout`) for context-aware responses
+- **Voice input** — speech-to-text via the Web Speech API with auto-silence detection
+- **Multiple response modes** — explain, hint (no code), or full solution with complexity analysis
+- **Overlay window** — frameless, always-on-top, resizable; behaves like a heads-up display
+- **Content protection** — uses OS-level display affinity APIs (`SetWindowDisplayAffinity` on Windows, `setSharingType` on macOS) so the window is excluded from screen recordings and captures
+- **Adjustable opacity** — toggle between low and full opacity
+
+## Tech stack
+
+- **Electron** — main process handles window management, global shortcuts, tray, screen capture via `desktopCapturer`
+- **Groq API** — fast inference with `llama-3.3-70b-versatile`, `qwen-qwq-32b` (reasoning), `llama-4-scout` (vision)
+- **Web Speech API** — browser-native speech recognition, no external service needed
+- **Vanilla HTML/CSS/JS** — single-page renderer, no framework overhead
+
+## Getting started
+
+### Prerequisites
+- [Node.js](https://nodejs.org) (v18+)
+
+### Install & run
 ```bash
+git clone https://github.com/Colkam4l/ghost.git
 cd ghost
 npm install
 npm start
 ```
 
-### 3. Get a Free Groq API Key
-1. Go to [console.groq.com](https://console.groq.com)
-2. Navigate to **API Keys** → **Create API Key**
-3. Copy the key (starts with `gsk_`)
-4. Paste it into GHOST when launched
+### API key
+You'll need a free API key from [Groq](https://console.groq.com):
+1. Create an account → go to **API Keys** → **Create API Key**
+2. Copy the key (starts with `gsk_`)
+3. Paste it into the app on first launch
 
----
-
-## ⌨️ Keyboard Shortcuts
+## Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Shift+G` / `Cmd+Shift+G` | Toggle window visibility (show/hide) |
-| `Ctrl+Shift+H` / `Cmd+Shift+H` | Toggle content protection ON/OFF |
-| `Ctrl+Shift+C` / `Cmd+Shift+C` | Capture screen for AI analysis |
-| `Ctrl+Enter` | Run GHOST (send text query) |
-| `Ctrl+H` | Toggle opacity (15% ↔ 100%) |
+| `Alt+Shift+G` | Show / hide the overlay |
+| `Alt+Shift+P` | Toggle content protection |
+| `Alt+Shift+S` | Capture screen for AI analysis |
+| `Ctrl+Enter` | Send query |
+| `Ctrl+H` | Toggle opacity |
 
----
+## Architecture
 
-## 🛡️ How Stealth Works
+```
+ghost/
+├── main.js          # Electron main process — window, tray, shortcuts, IPC, screen capture
+├── preload.js       # Context bridge between main and renderer
+├── renderer/
+│   └── index.html   # UI — single file with embedded CSS and JS
+├── package.json
+└── .gitignore
+```
 
-- **Windows**: `SetWindowDisplayAffinity(DISPLAY_AFFINITY_EXCLUDEFROMCAPTURE)` — invisible to ALL screen capture
-- **macOS**: `setSharingType('none')` — invisible to all screen recording
-- No taskbar icon, always on top (floating level)
+The main process manages the `BrowserWindow` with content protection and floating always-on-top behavior. Screen captures are taken via Electron's `desktopCapturer` and sent to the renderer over IPC. The renderer handles the UI, API calls to Groq, and speech recognition.
 
----
-
-## 📸 Screen Capture
-
-Press `Ctrl+Shift+C` or click **📸 Capture Screen** to take a screenshot. GHOST uses Groq's vision model (`llama-4-scout`) to automatically analyze the coding problem on your screen and provide solutions.
-
-## 🎤 Voice Input
-
-Click **🎤 Listen** to activate real-time speech recognition. GHOST transcribes your voice and fills in the problem textarea. Auto-stops after 3 seconds of silence.
-
----
-
-## 🧠 Modes & Models
-
-| Mode | Description |
-|---|---|
-| 💡 Explain | Understanding, Key Constraints, Approach |
-| 🔍 Hints | 3–5 progressive hints, no code |
-| ⚙️ Solution | Full code with complexity analysis |
-
-| Model | ID |
-|---|---|
-| ⚡ FAST | `llama-3.3-70b-versatile` |
-| 🧠 REASON | `qwen-qwq-32b` (chain-of-thought) |
-| 👁️ VISION | `llama-4-scout` (screen capture) |
-
----
-
-## 📦 Build for Distribution
+## Building
 
 ```bash
 npm run build
 ```
 
-- **Windows**: `.exe` via NSIS
-- **macOS**: `.dmg` package
+Produces platform-specific distributables via `electron-builder`:
+- **Windows** — `.exe` (NSIS installer)
+- **macOS** — `.dmg`
+
+## License
+
+MIT
