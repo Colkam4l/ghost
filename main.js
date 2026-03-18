@@ -1,5 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const { applyStealthAffinity, removeStealthAffinity, bindStealthEvents } = require('./stealth');
 
 // ─── MEMORY OPTIMIZATIONS ───
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=128');
@@ -43,6 +44,11 @@ function createTray() {
         contentProtectionEnabled = !contentProtectionEnabled;
         if (win) {
           win.setContentProtection(contentProtectionEnabled);
+          if (contentProtectionEnabled) {
+            applyStealthAffinity(win);
+          } else {
+            removeStealthAffinity(win);
+          }
           win.webContents.send('protection-status', contentProtectionEnabled);
         }
       }
@@ -84,12 +90,25 @@ function createWindow() {
   win.setAlwaysOnTop(true, 'floating');
 
   // Enable content protection — invisible to screen capture
+  // Use both Electron's API AND native Win32 call for maximum reliability
   win.setContentProtection(true);
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   win.once('ready-to-show', () => {
     win.show();
+
+    // Apply native Win32 stealth (WDA_EXCLUDEFROMCAPTURE) directly
+    // This is more reliable than Electron's setContentProtection alone
+    const ok = applyStealthAffinity(win);
+    if (ok) {
+      console.log('[GHOST] Native stealth active — window is invisible to screen capture');
+    } else {
+      console.warn('[GHOST] Native stealth failed — falling back to Electron content protection only');
+    }
+
+    // Re-apply stealth on window state changes (some Win11 builds reset the flag)
+    bindStealthEvents(win);
   });
 
   // ─── HOTKEYS ───
@@ -108,6 +127,11 @@ function createWindow() {
     globalShortcut.register('Alt+Shift+P', () => {
       contentProtectionEnabled = !contentProtectionEnabled;
       win.setContentProtection(contentProtectionEnabled);
+      if (contentProtectionEnabled) {
+        applyStealthAffinity(win);
+      } else {
+        removeStealthAffinity(win);
+      }
       win.webContents.send('protection-status', contentProtectionEnabled);
     });
   } catch (e) { }
@@ -181,6 +205,14 @@ function stopLiveMonitor() {
 ipcMain.on('toggle-protection', () => {
   contentProtectionEnabled = !contentProtectionEnabled;
   win.setContentProtection(contentProtectionEnabled);
+
+  // Also toggle native Win32 stealth
+  if (contentProtectionEnabled) {
+    applyStealthAffinity(win);
+  } else {
+    removeStealthAffinity(win);
+  }
+
   win.webContents.send('protection-status', contentProtectionEnabled);
 });
 
