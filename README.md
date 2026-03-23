@@ -78,3 +78,4 @@ Produces platform-specific distributables via `electron-builder`:
 ## License
 
 MIT
+## Collo 
