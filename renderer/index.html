@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GHOST — AI Interview Copilot</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080a0e;
+      --bg2: #0d1117;
+      --neon: #00ff88;
+      --cyan: #00c8ff;
+      --red: #ff3366;
+      --orange: #ff9f43;
+      --dim: #3a4553;
+      --text: #c9d1d9;
+      --text-bright: #e6edf3;
+      --border: #1a2233;
+      --glass: rgba(13, 17, 23, 0.85);
+      --radius: 8px;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+      --font-ui: 'Segoe UI', 'Arial', sans-serif;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      font-family: var(--font-mono);
+      color: var(--text);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #app-root {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid var(--border);
+    }
+
+    #app-root::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app-root::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0, 0, 0, 0.04) 3px, rgba(0, 0, 0, 0.04) 6px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── TITLEBAR ─── */
+    #titlebar {
+      -webkit-app-region: drag;
+      height: 36px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    #titlebar .left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #titlebar .logo {
+      font-size: 14px;
+    }
+
+    #titlebar .title {
+      font-family: var(--font-ui);
+      font-weight: 800;
+      font-size: 11px;
+      color: var(--neon);
+      letter-spacing: 1.5px;
+    }
+
+    .stealth-badge {
+      font-size: 7px;
+      font-weight: 700;
+      color: var(--bg);
+      background: var(--neon);
+      padding: 2px 5px;
+      border-radius: 3px;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .header-info {
+      font-size: 8px;
+      color: var(--dim);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .prot-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--neon);
+      box-shadow: 0 0 4px var(--neon);
+      transition: all 0.3s;
+    }
+
+    .prot-dot.off {
+      background: var(--red);
+      box-shadow: 0 0 4px var(--red);
+    }
+
+    #titlebar .controls {
+      display: flex;
+      gap: 3px;
+      -webkit-app-region: no-drag;
+    }
+
+    #titlebar .controls button {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    #titlebar .controls button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-bright);
+    }
+
+    #titlebar .controls .close-btn:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* ─── COMPACT TOOLBAR ─── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 8px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+      position: relative;
+    }
+
+    .tb-btn {
+      width: 28px;
+      height: 26px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      gap: 2px;
+    }
+
+    .tb-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-bright);
+    }
+
+    .tb-btn.tb-danger:hover {
+      color: var(--red);
+    }
+
+    .tb-btn.live-active {
+      background: rgba(255, 51, 102, 0.1);
+      color: var(--red);
+    }
+
+    .tb-btn.voice-active {
+      background: rgba(255, 51, 102, 0.1);
+      color: var(--red);
+    }
+
+    .tb-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 3px;
+      flex-shrink: 0;
+    }
+
+    #toolbar .mode-btn {
+      width: 26px;
+      height: 24px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    #toolbar .mode-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    #toolbar .mode-btn.active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: rgba(0, 200, 255, 0.08);
+    }
+
+    .tb-lang {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 3px 4px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .tb-lang option {
+      background: var(--bg2);
+    }
+
+    #toolbar .model-toggle {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #toolbar .model-toggle button {
+      font-size: 10px;
+      padding: 3px 6px;
+      border: none;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #toolbar .model-toggle button.active {
+      background: var(--neon);
+      color: var(--bg);
+    }
+
+    #toolbar .session-info {
+      font-size: 8px;
+      color: var(--dim);
+      margin-right: 2px;
+    }
+
+    #toolbar .pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      display: none;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .tb-btn.live-active .pulse-dot,
+    .tb-btn.voice-active .pulse-dot {
+      display: inline-block;
+    }
+
+    /* ─── COLLAPSIBLE PANEL ─── */
+    #controls-panel {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+      max-height: 200px;
+      overflow: hidden;
+      flex-shrink: 0;
+      z-index: 9;
+    }
+
+    #controls-panel.collapsed {
+      max-height: 0;
+      padding: 0 10px;
+      opacity: 0;
+      border-bottom: none;
+    }
+
+    .panel-section {
+      display: block;
+    }
+
+    .panel-label {
+      font-size: 7px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    #controls-panel .api-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    #controls-panel .api-row input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 5px 7px;
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      outline: none;
+    }
+
+    #controls-panel .api-row input:focus {
+      border-color: var(--neon);
+    }
+
+    #controls-panel .api-row input::placeholder {
+      color: var(--dim);
+    }
+
+    #controls-panel .clear-btn {
+      font-size: 9px;
+      padding: 3px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+    }
+
+    #controls-panel .clear-btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ─── OVERLAYS (live feed, screenshot, transcript) ─── */
+    .live-feed,
+    .screenshot-preview,
+    .transcript-area,
+    .error-msg {
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+
+    .live-feed {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      height: 70px;
+      margin-top: 4px;
+    }
+
+    .live-feed.show {
+      display: block;
+    }
+
+    .live-feed img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.6;
+    }
+
+    .live-feed .feed-overlay {
+      position: absolute;
+      top: 3px;
+      left: 5px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .live-feed .feed-label {
+      font-size: 7px;
+      color: var(--red);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 1px 4px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .live-feed .feed-label .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .live-feed .analyze-btn {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border: 1px solid var(--orange);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.8);
+      color: var(--orange);
+      cursor: pointer;
+    }
+
+    .screenshot-preview {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      max-height: 70px;
+      margin-top: 4px;
+    }
+
+    .screenshot-preview.show {
+      display: block;
+    }
+
+    .screenshot-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.7;
+    }
+
+    .screenshot-preview .overlay-label {
+      position: absolute;
+      top: 3px;
+      left: 5px;
+      font-size: 7px;
+      color: var(--orange);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .screenshot-preview .dismiss-btn {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 9px;
+      color: var(--dim);
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      padding: 1px 4px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .transcript-area {
+      display: none;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 9px;
+      color: var(--text);
+      max-height: 60px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .transcript-area.show {
+      display: block;
+    }
+
+    .transcript-label {
+      font-size: 6px;
+      color: var(--red);
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .transcript-label .live-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 9px;
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 51, 102, 0.3);
+      border-radius: 4px;
+      background: rgba(255, 51, 102, 0.05);
+      display: none;
+      margin-top: 4px;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    /* ─── CHAT OUTPUT (takes all remaining space) ─── */
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    #output::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #output::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    #think-container {
+      flex-shrink: 0;
+      padding: 0 8px;
+    }
+
+    /* ─── BOTTOM INPUT BAR ─── */
+    #input-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding: 6px 8px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+      position: relative;
+    }
+
+    #input-bar textarea {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.4;
+      resize: none;
+      outline: none;
+      min-height: 32px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    #input-bar textarea:focus {
+      border-color: var(--cyan);
+    }
+
+    #input-bar textarea::placeholder {
+      color: var(--dim);
+    }
+
+    #input-bar .char-count {
+      position: absolute;
+      right: 52px;
+      bottom: 12px;
+      font-size: 7px;
+      color: var(--dim);
+    }
+
+    #input-bar .run-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon), var(--cyan));
+      color: var(--bg);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+
+    #input-bar .run-btn:hover {
+      box-shadow: 0 0 16px rgba(0, 255, 136, 0.3);
+      transform: scale(1.05);
+    }
+
+    #input-bar .run-btn:active {
+      transform: scale(0.95);
+    }
+
+    #input-bar .run-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ─── CHAT BUBBLES ─── */
+    .chat-msg {
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .chat-msg.user {
+      background: rgba(0, 200, 255, 0.08);
+      border: 1px solid rgba(0, 200, 255, 0.15);
+      border-left: 3px solid var(--cyan);
+      color: var(--cyan);
+    }
+
+    .chat-msg.assistant {
+      background: rgba(0, 255, 136, 0.04);
+      border: 1px solid rgba(0, 255, 136, 0.1);
+      border-left: 3px solid var(--neon);
+      color: var(--text-bright);
+    }
+
+    .chat-msg .msg-label {
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: 0.6;
+    }
+
+    .chat-msg.user .msg-label {
+      color: var(--cyan);
+    }
+
+    .chat-msg.assistant .msg-label {
+      color: var(--neon);
+    }
+
+    .chat-msg .msg-copy {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--dim);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .chat-msg:hover .msg-copy {
+      opacity: 1;
+    }
+
+    .chat-msg .msg-copy:hover {
+      border-color: var(--neon);
+      color: var(--neon);
+    }
+
+    /* ─── THINK BLOCK ─── */
+    .think-block {
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .think-block summary {
+      padding: 5px 8px;
+      font-size: 8px;
+      color: var(--dim);
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .think-block .think-content {
+      padding: 8px;
+      font-size: 9px;
+      color: var(--dim);
+      line-height: 1.5;
+      white-space: pre-wrap;
+      font-family: var(--font-mono);
+    }
+
+    /* ─── STEALTH ─── */
+    .opacity-control {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .opacity-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--neon);
+      cursor: pointer;
+    }
+
+    .opacity-val {
+      font-size: 8px;
+      color: var(--neon);
+      min-width: 24px;
+      text-align: right;
+    }
+
+    .toggle-prot-btn {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 3px 7px;
+      border: 1px solid var(--neon);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--neon);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .toggle-prot-btn.off {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 6px;
+      height: 12px;
+      background: var(--neon);
+      animation: cb 0.7s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes cb {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--bg);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-root">
+    <!-- TITLEBAR -->
+    <div id="titlebar">
+      <div class="left">
+        <span class="logo">👻</span>
+        <span class="title">GHOST</span>
+        <span class="stealth-badge">STEALTH</span>
+      </div>
+      <div class="header-info">
+        <span id="platform-label">—</span>
+        <span>PROT</span>
+        <span class="prot-dot" id="prot-dot"></span>
+        <span id="prot-status-text">ON</span>
+      </div>
+      <div class="controls">
+        <button id="btn-minimize" title="Minimize">─</button>
+        <button class="close-btn" id="btn-close" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- COMPACT TOOLBAR -->
+    <div id="toolbar">
+      <button class="tb-btn" id="tb-toggle" title="Toggle controls panel">⚙️</button>
+      <div class="tb-sep"></div>
+      <button class="mode-btn active" data-mode="explain">💡</button>
+      <button class="mode-btn" data-mode="hints">🔍</button>
+      <button class="mode-btn" data-mode="solution">⚙️</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="capture-btn" title="Screenshot (Ctrl+Shift+C)">📸</button>
+      <button class="tb-btn" id="live-btn" title="Live screen monitor"><span class="pulse-dot"></span>🖥️</button>
+      <button class="tb-btn voice-btn" id="voice-btn" title="Voice input"><span class="pulse-dot"></span>🎤</button>
+      <div class="tb-sep"></div>
+      <select class="tb-lang" id="lang-select">
+        <option value="Python">PY</option>
+        <option value="JavaScript">JS</option>
+        <option value="Java">Java</option>
+        <option value="C++">C++</option>
+        <option value="TypeScript">TS</option>
+        <option value="Go">Go</option>
+        <option value="Rust">Rust</option>
+        <option value="C#">C#</option>
+      </select>
+      <div class="tb-sep"></div>
+      <div class="model-toggle">
+        <button id="mode-fast" class="active">⚡</button>
+        <button id="mode-reason">🧠</button>
+      </div>
+      <div style="flex:1"></div>
+      <span class="session-info" id="session-info">0</span>
+      <button class="tb-btn tb-danger" id="clear-btn" title="Clear session">🗑️</button>
+    </div>
+
+    <div id="controls-panel" class="collapsed">
+      <div class="panel-section">
+        <label class="panel-label">🔑 GROQ KEY (Text Chat)</label>
+        <div class="api-row">
+          <input type="password" id="api-key" placeholder="gsk_... (saved locally)" autocomplete="off"
+            spellcheck="false" />
+          <button class="clear-btn" id="clear-key-btn" title="Clear key">✕</button>
+        </div>
+      </div>
+      <div class="panel-section">
+        <label class="panel-label">� GEMINI KEY (Vision / Screen)</label>
+        <div class="api-row">
+          <input type="password" id="gemini-key" placeholder="AIza... (saved locally)" autocomplete="off"
+            spellcheck="false" />
+          <button class="clear-btn" id="clear-gemini-btn" title="Clear key">✕</button>
+        </div>
+      </div>
+      <div class="panel-section" style="display:flex;gap:8px;align-items:center;">
+        <label class="panel-label" style="margin-bottom:0;">🛡️ STEALTH</label>
+        <div class="opacity-control">
+          <input type="range" class="opacity-slider" id="opacity-slider" min="10" max="100" value="100" />
+          <span class="opacity-val" id="opacity-val">100%</span>
+        </div>
+        <button class="toggle-prot-btn" id="toggle-prot-btn">🛡️ ON</button>
+      </div>
+    </div>
+
+    <!-- LIVE FEED (shown when active) -->
+    <div class="live-feed" id="live-feed">
+      <span class="feed-overlay">
+        <span class="feed-label"><span class="dot"></span> LIVE</span>
+        <button class="analyze-btn" id="analyze-live-btn">⚡ ANALYZE NOW</button>
+      </span>
+      <img id="live-img" src="" alt="Live feed" />
+    </div>
+
+    <!-- SCREENSHOT PREVIEW -->
+    <div class="screenshot-preview" id="screenshot-preview">
+      <span class="overlay-label">📸 Captured</span>
+      <button class="dismiss-btn" id="dismiss-screenshot">✕</button>
+      <img id="screenshot-img" src="" alt="Screenshot" />
+    </div>
+
+    <!-- VOICE TRANSCRIPT -->
+    <div class="transcript-area" id="transcript-area">
+      <div class="transcript-label"><span class="live-dot"></span> LIVE TRANSCRIPT</div>
+      <div id="transcript-text">Listening...</div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-msg" id="error-msg"></div>
+
+    <!-- CHAT HISTORY (takes all remaining space) -->
+    <div id="output">
+      <div id="chat-messages"></div>
+    </div>
+    <div id="think-container"></div>
+
+    <!-- BOTTOM INPUT BAR -->
+    <div id="input-bar">
+      <textarea id="problem-input" placeholder="Type problem or use 📸 🖥️ 🎤 ..." rows="1"></textarea>
+      <span class="char-count" id="char-count">0</span>
+      <button class="run-btn" id="run-btn" title="Ctrl+Enter">▶</button>
+    </div>
+  </div>
+
+  <script>
+    // ─── STATE ───
+    let apiKey = localStorage.getItem('ghost_api_key') || '';
+    let geminiKey = localStorage.getItem('ghost_gemini_key') || '';
+    let currentModel = 'llama-3.3-70b-versatile';
+    let currentMode = 'explain';
+    let conversationHistory = JSON.parse(localStorage.getItem('ghost_chat_history') || '[]');
+    let isLoading = false;
+    let protectionOn = true;
+    let isListening = false;
+    let recognition = null;
+    let liveMonitorActive = false;
+    let lastFrameHash = '';
+    let currentScreenshot = null;
+    let latestLiveFrame = null;
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    const apiKeyInput = $('#api-key');
+    const problemInput = $('#problem-input');
+    const charCount = $('#char-count');
+    const langSelect = $('#lang-select');
+    const runBtn = $('#run-btn');
+    const output = $('#output');
+    const chatMessages = $('#chat-messages');
+    const errorMsg = $('#error-msg');
+    const sessionInfo = $('#session-info');
+    const clearBtn = $('#clear-btn');
+    const opacitySlider = $('#opacity-slider');
+    const opacityVal = $('#opacity-val');
+    const toggleProtBtn = $('#toggle-prot-btn');
+    const protDot = $('#prot-dot');
+    const protStatusText = $('#prot-status-text');
+    const platformLabel = $('#platform-label');
+    const thinkContainer = $('#think-container');
+    const captureBtn = $('#capture-btn');
+    const liveBtn = $('#live-btn');
+    const liveFeed = $('#live-feed');
+    const liveImg = $('#live-img');
+    const analyzeLiveBtn = $('#analyze-live-btn');
+    const voiceBtn = $('#voice-btn');
+    const transcriptArea = $('#transcript-area');
+    const transcriptText = $('#transcript-text');
+    const screenshotPreview = $('#screenshot-preview');
+    const screenshotImg = $('#screenshot-img');
+    const dismissScreenshot = $('#dismiss-screenshot');
+
+    // ─── INIT ───
+    const platform = window.ghostAPI?.platform || 'unknown';
+    platformLabel.textContent = platform === 'win32' ? '🪟' : platform === 'darwin' ? '🍎' : '🐧';
+
+    // ─── TITLEBAR ───
+    $('#btn-minimize').addEventListener('click', () => window.ghostAPI?.minimizeWindow());
+    $('#btn-close').addEventListener('click', () => window.ghostAPI?.closeWindow());
+
+    // ─── CONTROLS PANEL TOGGLE ───
+    const controlsPanel = $('#controls-panel');
+    $('#tb-toggle').addEventListener('click', () => {
+      controlsPanel.classList.toggle('collapsed');
+    });
+
+    // ─── AUTO-EXPAND TEXTAREA ───
+    problemInput.addEventListener('input', () => {
+      charCount.textContent = problemInput.value.length;
+      problemInput.style.height = 'auto';
+      problemInput.style.height = Math.min(problemInput.scrollHeight, 100) + 'px';
+    });
+
+    // ─── API KEY (persisted in localStorage) ───
+    if (apiKey) {
+      apiKeyInput.value = apiKey;
+    }
+    apiKeyInput.addEventListener('input', () => {
+      apiKey = apiKeyInput.value.trim();
+      if (apiKey) localStorage.setItem('ghost_api_key', apiKey);
+    });
+    $('#clear-key-btn').addEventListener('click', () => {
+      apiKey = '';
+      apiKeyInput.value = '';
+      localStorage.removeItem('ghost_api_key');
+    });
+
+    // ─── GEMINI KEY (persisted in localStorage) ───
+    const geminiKeyInput = $('#gemini-key');
+    if (geminiKey) geminiKeyInput.value = geminiKey;
+    geminiKeyInput.addEventListener('input', () => {
+      geminiKey = geminiKeyInput.value.trim();
+      if (geminiKey) localStorage.setItem('ghost_gemini_key', geminiKey);
+    });
+    $('#clear-gemini-btn').addEventListener('click', () => {
+      geminiKey = '';
+      geminiKeyInput.value = '';
+      localStorage.removeItem('ghost_gemini_key');
+    });
+
+    // ─── MODEL TOGGLE ───
+    $('#mode-fast').addEventListener('click', () => setModel('fast'));
+    $('#mode-reason').addEventListener('click', () => setModel('reason'));
+
+    function setModel(mode) {
+      if (mode === 'fast') {
+        currentModel = 'llama-3.3-70b-versatile';
+        $('#mode-fast').classList.add('active');
+        $('#mode-reason').classList.remove('active');
+      } else {
+        currentModel = 'qwen-qwq-32b';
+        $('#mode-reason').classList.add('active');
+        $('#mode-fast').classList.remove('active');
+      }
+    }
+
+    // ─── MODE BUTTONS ───
+    $$('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+      });
+    });
+
+    // ─── CHAR COUNT ───
+    problemInput.addEventListener('input', () => { charCount.textContent = problemInput.value.length; });
+
+    // ══════════════════════════════════════════════
+    //   SINGLE SCREENSHOT
+    // ══════════════════════════════════════════════
+
+    captureBtn.addEventListener('click', doScreenCapture);
+
+    async function doScreenCapture() {
+      captureBtn.textContent = '⏳...';
+      captureBtn.disabled = true;
+      try {
+        const dataUrl = await window.ghostAPI.captureScreen();
+        if (dataUrl) {
+          currentScreenshot = dataUrl;
+          screenshotImg.src = dataUrl;
+          screenshotPreview.classList.add('show');
+          // Don't auto-analyze — let user add a prompt in the input bar
+        } else {
+          showError('⚠️ Capture failed.');
+        }
+      } catch (err) {
+        showError('⚠️ ' + err.message);
+      } finally {
+        captureBtn.textContent = '📸';
+        captureBtn.disabled = false;
+      }
+    }
+
+    window.ghostAPI?.onScreenCaptured((dataUrl) => {
+      currentScreenshot = dataUrl;
+      screenshotImg.src = dataUrl;
+      screenshotPreview.classList.add('show');
+      // Don't auto-analyze — let user type a prompt first
+    });
+
+    dismissScreenshot.addEventListener('click', () => {
+      screenshotPreview.classList.remove('show');
+      currentScreenshot = null;
+    });
+
+    // ══════════════════════════════════════════════
+    //   LIVE SCREEN MONITOR
+    // ══════════════════════════════════════════════
+
+    liveBtn.addEventListener('click', toggleLiveMonitor);
+
+    function toggleLiveMonitor() {
+      if (liveMonitorActive) {
+        stopLiveMonitor();
+      } else {
+        startLiveMonitor();
+      }
+    }
+
+    function startLiveMonitor() {
+      liveMonitorActive = true;
+      liveBtn.classList.add('live-active');
+      liveBtn.innerHTML = '<span class="pulse-dot"></span>🖥️';
+      liveFeed.classList.add('show');
+      lastFrameHash = '';
+      window.ghostAPI?.startLiveMonitor(3000); // capture every 3 seconds
+    }
+
+    function stopLiveMonitor() {
+      liveMonitorActive = false;
+      liveBtn.classList.remove('live-active');
+      liveBtn.innerHTML = '<span class="pulse-dot"></span>🖥️';
+      liveFeed.classList.remove('show');
+      latestLiveFrame = null;
+      lastFrameHash = '';
+      lastAnalyzedHash = '';
+      clearTimeout(changeDebounce);
+      window.ghostAPI?.stopLiveMonitor();
+    }
+
+    // Receive live frames and auto-analyze on change
+    let changeDebounce = null;
+    let lastAnalyzedHash = '';
+
+    window.ghostAPI?.onLiveFrame((dataUrl) => {
+      if (!liveMonitorActive) return;
+      latestLiveFrame = dataUrl;
+      liveImg.src = dataUrl;
+
+      // Detect significant change: compare data length (rough proxy for content)
+      const frameHash = dataUrl.length.toString();
+      if (frameHash !== lastFrameHash) {
+        lastFrameHash = frameHash;
+
+        // Only auto-analyze if content actually changed significantly from last analysis
+        const lengthDiff = Math.abs(parseInt(frameHash) - parseInt(lastAnalyzedHash || '0'));
+        const threshold = parseInt(lastAnalyzedHash || '0') * 0.03; // 3% change
+
+        if (lengthDiff > threshold && apiKey && !isLoading) {
+          // Debounce: wait 2s for content to stabilize before analyzing
+          clearTimeout(changeDebounce);
+          changeDebounce = setTimeout(() => {
+            if (latestLiveFrame && !isLoading && liveMonitorActive) {
+              lastAnalyzedHash = latestLiveFrame.length.toString();
+              analyzeImage(latestLiveFrame);
+            }
+          }, 2000);
+        }
+      }
+    });
+
+    // Analyze current live frame on demand (skip debounce)
+    analyzeLiveBtn.addEventListener('click', () => {
+      if (latestLiveFrame && apiKey) {
+        clearTimeout(changeDebounce);
+        lastAnalyzedHash = latestLiveFrame.length.toString();
+        analyzeImage(latestLiveFrame);
+      } else if (!apiKey) {
+        showError('⚠️ Enter your Groq API key first.');
+      } else {
+        showError('⚠️ No live frame available yet.');
+      }
+    });
+
+    // ══════════════════════════════════════════════
+    //   VISION ANALYSIS (shared by snapshot + live)
+    // ══════════════════════════════════════════════
+
+    async function analyzeImage(dataUrl, userPrompt) {
+      if (isLoading) return;
+      // Need at least one key
+      const useGemini = !!geminiKey;
+      if (!geminiKey && !apiKey) { showError('⚠️ Enter a Gemini or Groq API key (⚙️ settings).'); return; }
+
+      hideError();
+      isLoading = true;
+      runBtn.disabled = true;
+      runBtn.innerHTML = '<span class="spinner"></span>ANALYZING...';
+      thinkContainer.innerHTML = '';
+
+      // Show what the user asked
+      const userLabel = userPrompt ? `📷 + "${userPrompt}"` : '[Screen Capture 📷]';
+      conversationHistory.push({ role: 'user', content: userLabel });
+      addChatBubble('user', userLabel, false);
+      saveHistory();
+
+      const assistantBody = addChatBubble('assistant', '', true);
+
+      // Smart prompt: if user gave a specific question, focus on that
+      // If no prompt, auto-detect what's relevant on screen
+      let textPrompt;
+      if (userPrompt) {
+        textPrompt = `You are a smart AI assistant. The user is sharing their screen and asking:\n\n"${userPrompt}"\n\nAnalyze the screenshot and answer ONLY what the user asked about. Be direct, concise, and relevant. If code is visible, detect the language and mention it. Do not describe everything on screen — focus on the user's question.`;
+      } else {
+        const langDetect = `First, detect the programming language visible on screen. Output it on the very first line as: [DETECTED LANGUAGE: X] where X is one of: Python, JavaScript, Java, C++, TypeScript, Go, Rust, C#. If no code is visible, skip this.\n\n`;
+        const modePrompts = {
+          explain: langDetect + `Look at this screenshot and identify the MAIN problem or question shown. Focus only on what's important — ignore navigation bars, ads, irrelevant UI. Explain:\n\n**PROBLEM** — What is being asked\n**KEY CONSTRAINTS** — Important limits\n**APPROACH** — How to solve it, no code`,
+          hints: langDetect + `Identify the main coding problem on screen. Give 3-5 progressive hints:\n**HINT 1** — General direction\n**HINT 2** — More specific\n**HINT 3** — Key insight\n**HINT 4** — Almost there\n**HINT 5** — Final nudge\nNO code.`,
+          solution: langDetect + `Identify the main coding problem on screen. Write a clean, complete solution in the detected language with comments.\n\n**Time Complexity:** O(...)\n**Space Complexity:** O(...)`
+        };
+        textPrompt = modePrompts[currentMode];
+      }
+
+      try {
+        let content;
+        if (useGemini) {
+          content = await callGeminiVision(dataUrl, textPrompt);
+        } else {
+          const visionModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+          const messages = [{
+            role: 'user',
+            content: [
+              { type: 'text', text: textPrompt },
+              { type: 'image_url', image_url: { url: dataUrl } }
+            ]
+          }];
+          content = await callGroqVision(messages, visionModel);
+        }
+
+        const langMatch = content.match(/\[DETECTED LANGUAGE:\s*(.+?)\]/i);
+        if (langMatch) {
+          const detected = langMatch[1].trim();
+          const validLangs = ['Python', 'JavaScript', 'Java', 'C++', 'TypeScript', 'Go', 'Rust', 'C#'];
+          const match = validLangs.find(l => l.toLowerCase() === detected.toLowerCase());
+          if (match) langSelect.value = match;
+          content = content.replace(/\[DETECTED LANGUAGE:.*?\]\n?/i, '').trim();
+        }
+
+        let thinkContent = '';
+        const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+        if (thinkMatch) {
+          thinkContent = thinkMatch[1].trim();
+          content = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
+        conversationHistory.push({ role: 'assistant', content });
+        await typewriter(content, assistantBody);
+        saveHistory();
+        if (thinkContent) {
+          thinkContainer.innerHTML = `<details class="think-block"><summary>// chain of thought</summary><div class="think-content">${escapeHTML(thinkContent)}</div></details>`;
+        }
+        updateSessionInfo();
+      } catch (err) {
+        if (err.message.includes('429') || err.message.includes('overload')) {
+          showError('⚠️ Rate limited. Retrying in 3s...');
+          await delay(3000);
+          hideError();
+          try {
+            let r2;
+            if (useGemini) {
+              r2 = await callGeminiVision(dataUrl, textPrompt);
+            } else {
+              const visionModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+              const messages = [{ role: 'user', content: [{ type: 'text', text: textPrompt }, { type: 'image_url', image_url: { url: dataUrl } }] }];
+              r2 = await callGroqVision(messages, visionModel);
+            }
+            conversationHistory.push({ role: 'assistant', content: r2 });
+            await typewriter(r2, assistantBody);
+            saveHistory();
+            updateSessionInfo();
+          } catch (e2) {
+            showError('❌ Retry failed: ' + e2.message);
+            assistantBody.textContent = '❌ Failed to analyze.';
+          }
+        } else {
+          showError('❌ ' + err.message);
+          assistantBody.textContent = '❌ ' + err.message;
+        }
+      } finally {
+        isLoading = false;
+        runBtn.disabled = false;
+        runBtn.innerHTML = '▶';
+      }
+    }
+
+    async function callGroqVision(messages, model) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: 4096 })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`API ${res.status}: ${errData.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+
+    // ─── GEMINI VISION API ───
+    async function callGeminiVision(imageDataUrl, textPrompt) {
+      const base64Match = imageDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!base64Match) throw new Error('Invalid image data');
+      const mimeType = `image/${base64Match[1]}`;
+      const base64Data = base64Match[2];
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: textPrompt },
+              { inline_data: { mime_type: mimeType, data: base64Data } }
+            ]
+          }],
+          generationConfig: { temperature: 0.4, maxOutputTokens: 4096 }
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`Gemini ${res.status}: ${errData.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+    }
+
+    // ══════════════════════════════════════════════
+    //   VOICE INPUT
+    // ══════════════════════════════════════════════
+
+    voiceBtn.addEventListener('click', toggleVoice);
+
+    function toggleVoice() {
+      if (isListening) stopListening();
+      else startListening();
+    }
+
+    function startListening() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showError('⚠️ Speech recognition not available.');
+        return;
+      }
+
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SR();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      let finalTranscript = '';
+      let silenceTimer = null;
+
+      recognition.onstart = () => {
+        isListening = true;
+        voiceBtn.classList.add('voice-active');
+        voiceBtn.innerHTML = '<span class="pulse-dot"></span>🎤';
+        transcriptArea.classList.add('show');
+        transcriptText.textContent = 'Listening...';
+        finalTranscript = '';
+      };
+
+      recognition.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalTranscript += t + ' ';
+          else interim += t;
+        }
+        transcriptText.textContent = finalTranscript + interim;
+        problemInput.value = (finalTranscript + interim).trim();
+        charCount.textContent = problemInput.value.length;
+
+        clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+          if (finalTranscript.trim().length > 0) stopListening();
+        }, 3000);
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech') return;
+        if (event.error === 'not-allowed') showError('⚠️ Microphone access denied.');
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        if (isListening) {
+          try { recognition.start(); } catch (e) { stopListening(); }
+        }
+      };
+
+      try { recognition.start(); } catch (e) {
+        showError('⚠️ ' + e.message);
+      }
+    }
+
+    function stopListening() {
+      isListening = false;
+      voiceBtn.classList.remove('voice-active');
+      voiceBtn.innerHTML = '<span class="pulse-dot"></span>🎤';
+      if (recognition) { try { recognition.stop(); } catch (e) { } recognition = null; }
+      if (!transcriptText.textContent || transcriptText.textContent === 'Listening...') {
+        transcriptArea.classList.remove('show');
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    //   TEXT-BASED RUN
+    // ══════════════════════════════════════════════
+
+    const systemPrompts = {
+      explain: (lang) => `You are a coding interview expert. Explain the problem clearly:\n\n**UNDERSTANDING** — Restate the problem\n**KEY CONSTRAINTS** — Limits, edge cases\n**APPROACH** — Best approach in ${lang}, no code.\n\nBe concise.`,
+      hints: (lang) => `You are a coding interview coach. Give 3-5 progressive hints, NO code:\n\n**HINT 1** — General\n**HINT 2** — More specific\n**HINT 3** — Narrows approach\n**HINT 4** — Almost reveals\n**HINT 5** — Final nudge\n\nTarget: ${lang}.`,
+      solution: (lang) => `Senior software engineer. Write a complete clean solution in ${lang} with inline comments.\n\n**Time Complexity:** O(...)\n**Space Complexity:** O(...)`
+    };
+
+    runBtn.addEventListener('click', runGhost);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runGhost(); }
+      if (e.ctrlKey && e.key === 'h') {
+        e.preventDefault();
+        const v = parseInt(opacitySlider.value);
+        applyOpacity(v <= 15 ? 100 : 15);
+      }
+    });
+
+    async function runGhost() {
+      if (isLoading) return;
+      if (!apiKey) { showError('⚠️ Enter API key first.'); return; }
+      const problem = problemInput.value.trim();
+
+      // If there's a screenshot or live frame, use vision analysis with the prompt
+      const hasImage = currentScreenshot || latestLiveFrame;
+      if (hasImage) {
+        const imageData = currentScreenshot || latestLiveFrame;
+        problemInput.value = '';
+        charCount.textContent = '0';
+        analyzeImage(imageData, problem || null);
+        return;
+      }
+
+      // Text-only mode
+      if (!problem) { showError('⚠️ Type a question, or capture your screen first.'); return; }
+
+      if (isListening) stopListening();
+      hideError();
+      isLoading = true;
+      runBtn.disabled = true;
+      runBtn.innerHTML = '<span class="spinner"></span>';
+      thinkContainer.innerHTML = '';
+
+      conversationHistory.push({ role: 'user', content: problem });
+      addChatBubble('user', problem, false);
+      saveHistory();
+      problemInput.value = '';
+      charCount.textContent = '0';
+
+      const assistantBody = addChatBubble('assistant', '', true);
+
+      const lang = langSelect.value;
+      const messages = [
+        { role: 'system', content: `You are a concise, expert AI assistant. Answer the user's question directly. If they ask about code, target ${lang}. Be helpful, accurate, and brief.` },
+        ...conversationHistory
+      ];
+
+      try {
+        const response = await callGroq(messages);
+        let content = response;
+        let thinkContent = '';
+        const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+        if (thinkMatch) {
+          thinkContent = thinkMatch[1].trim();
+          content = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
+        conversationHistory.push({ role: 'assistant', content });
+        await typewriter(content, assistantBody);
+        saveHistory();
+        if (thinkContent) {
+          thinkContainer.innerHTML = `<details class="think-block"><summary>// chain of thought</summary><div class="think-content">${escapeHTML(thinkContent)}</div></details>`;
+        }
+        updateSessionInfo();
+      } catch (err) {
+        if (err.message.includes('429')) {
+          showError('⚠️ Rate limited. Retrying...');
+          await delay(3000);
+          hideError();
+          try {
+            const r = await callGroq(messages);
+            conversationHistory.push({ role: 'assistant', content: r });
+            await typewriter(r, assistantBody);
+            saveHistory();
+            updateSessionInfo();
+          } catch (e2) {
+            showError('❌ ' + e2.message);
+            conversationHistory.pop();
+          }
+        } else {
+          showError('❌ ' + err.message);
+          conversationHistory.pop();
+        }
+      } finally {
+        isLoading = false;
+        runBtn.disabled = false;
+        runBtn.innerHTML = '▶';
+      }
+    }
+
+    async function callGroq(messages) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({ model: currentModel, messages, temperature: 0.6, max_tokens: 4096 })
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(`API ${res.status}: ${d.error?.message || res.statusText}`);
+      }
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+
+    async function typewriter(text, targetEl) {
+      const el = targetEl;
+      const chars = text.split('');
+      let i = 0;
+      const speed = Math.max(1, Math.min(10, 2000 / chars.length));
+      return new Promise(resolve => {
+        function type() {
+          if (i < chars.length) {
+            const batch = Math.min(5, chars.length - i);
+            for (let j = 0; j < batch; j++) el.textContent += chars[i + j];
+            i += batch;
+            output.scrollTop = output.scrollHeight;
+            setTimeout(type, speed);
+          } else resolve();
+        }
+        type();
+      });
+    }
+
+    // ─── CHAT RENDERING ───
+    function addChatBubble(role, text, animate) {
+      const div = document.createElement('div');
+      div.className = `chat-msg ${role}`;
+      const label = role === 'user' ? '👤 YOU' : '👻 GHOST';
+      div.innerHTML = `<div class="msg-label">${label}</div><div class="msg-body"></div><button class="msg-copy" onclick="copyMsg(this)">COPY</button>`;
+      chatMessages.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+      const body = div.querySelector('.msg-body');
+      if (!animate) {
+        body.textContent = text;
+      }
+      return body;
+    }
+
+    function renderFullHistory() {
+      chatMessages.innerHTML = '';
+      if (conversationHistory.length === 0) {
+        chatMessages.innerHTML = '<span style="color:var(--dim);font-size:9px;">No messages yet. Ask a question or capture your screen.</span>';
+        return;
+      }
+      conversationHistory.forEach(msg => {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          addChatBubble(msg.role, msg.content, false);
+        }
+      });
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function saveHistory() {
+      // Keep last 50 messages to avoid localStorage bloat
+      const toSave = conversationHistory.slice(-50);
+      localStorage.setItem('ghost_chat_history', JSON.stringify(toSave));
+    }
+
+    function copyMsg(btn) {
+      const body = btn.parentElement.querySelector('.msg-body');
+      navigator.clipboard.writeText(body.textContent).then(() => {
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = 'COPY'; }, 1000);
+      });
+    }
+    // Expose to onclick
+    window.copyMsg = copyMsg;
+
+    // Render saved history on load
+    renderFullHistory();
+
+    // ─── SESSION ───
+    function updateSessionInfo() {
+      const c = conversationHistory.length;
+      sessionInfo.textContent = `Session: ${c} msg${c !== 1 ? 's' : ''}`;
+    }
+
+    clearBtn.addEventListener('click', () => {
+      conversationHistory = [];
+      currentScreenshot = null;
+      latestLiveFrame = null;
+      localStorage.removeItem('ghost_chat_history');
+      updateSessionInfo();
+      renderFullHistory();
+      thinkContainer.innerHTML = '';
+      screenshotPreview.classList.remove('show');
+      transcriptArea.classList.remove('show');
+    });
+
+    // ─── OPACITY ───
+    opacitySlider.addEventListener('input', () => applyOpacity(parseInt(opacitySlider.value)));
+
+    function applyOpacity(val) {
+      opacityVal.textContent = val + '%';
+      opacitySlider.value = val;
+      document.getElementById('app-root').style.opacity = val / 100;
+    }
+
+    // ─── PROTECTION ───
+    toggleProtBtn.addEventListener('click', () => window.ghostAPI?.toggleProtection());
+
+    window.ghostAPI?.onProtectionStatus((status) => {
+      protectionOn = status;
+      if (protectionOn) {
+        protDot.classList.remove('off');
+        protStatusText.textContent = 'ON';
+        toggleProtBtn.textContent = '🛡️ ON';
+        toggleProtBtn.classList.remove('off');
+      } else {
+        protDot.classList.add('off');
+        protStatusText.textContent = 'OFF';
+        toggleProtBtn.textContent = '⚠️ OFF';
+        toggleProtBtn.classList.add('off');
+      }
+    });
+
+    // ─── HELPERS ───
+    function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('show'); }
+    function hideError() { errorMsg.classList.remove('show'); }
+    function escapeHTML(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+  </script>
+</body>
+
+</html>
