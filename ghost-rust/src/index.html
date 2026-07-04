@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GHOST — AI Interview Copilot (Rust)</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080a0e;
+      --bg2: #0d1117;
+      --neon: #00ff88;
+      --cyan: #00c8ff;
+      --red: #ff3366;
+      --orange: #ff9f43;
+      --dim: #3a4553;
+      --text: #c9d1d9;
+      --text-bright: #e6edf3;
+      --border: #1a2233;
+      --glass: rgba(13, 17, 23, 0.85);
+      --radius: 8px;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+      --font-ui: 'Segoe UI', 'Arial', sans-serif;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      font-family: var(--font-mono);
+      color: var(--text);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #app-root {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid var(--border);
+    }
+
+    #app-root::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app-root::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0, 0, 0, 0.04) 3px, rgba(0, 0, 0, 0.04) 6px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── TITLEBAR ─── */
+    #titlebar {
+      height: 36px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    #titlebar .left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #titlebar .logo {
+      font-size: 14px;
+    }
+
+    #titlebar .title {
+      font-family: var(--font-ui);
+      font-weight: 800;
+      font-size: 11px;
+      color: var(--neon);
+      letter-spacing: 1.5px;
+    }
+
+    .stealth-badge {
+      font-size: 7px;
+      font-weight: 700;
+      color: var(--bg);
+      background: var(--neon);
+      padding: 2px 5px;
+      border-radius: 3px;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .header-info {
+      font-size: 8px;
+      color: var(--dim);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .prot-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--neon);
+      box-shadow: 0 0 4px var(--neon);
+      transition: all 0.3s;
+    }
+
+    .prot-dot.off {
+      background: var(--red);
+      box-shadow: 0 0 4px var(--red);
+    }
+
+    #titlebar .controls {
+      display: flex;
+      gap: 3px;
+    }
+
+    #titlebar .controls button {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    #titlebar .controls button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-bright);
+    }
+
+    #titlebar .controls .close-btn:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* ─── COMPACT TOOLBAR ─── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 8px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+      position: relative;
+    }
+
+    .tb-btn {
+      width: 28px;
+      height: 26px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      gap: 2px;
+    }
+
+    .tb-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-bright);
+    }
+
+    .tb-btn.tb-danger:hover {
+      color: var(--red);
+    }
+
+    .tb-btn.live-active {
+      background: rgba(255, 51, 102, 0.1);
+      color: var(--red);
+    }
+
+    .tb-btn.voice-active {
+      background: rgba(255, 51, 102, 0.1);
+      color: var(--red);
+    }
+
+    .tb-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 3px;
+      flex-shrink: 0;
+    }
+
+    #toolbar .mode-btn {
+      width: 26px;
+      height: 24px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    #toolbar .mode-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    #toolbar .mode-btn.active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: rgba(0, 200, 255, 0.08);
+    }
+
+    .tb-lang {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 3px 4px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .tb-lang option {
+      background: var(--bg2);
+    }
+
+    #toolbar .model-toggle {
+      display: flex;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #toolbar .model-toggle button {
+      font-size: 10px;
+      padding: 3px 6px;
+      border: none;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #toolbar .model-toggle button.active {
+      background: var(--neon);
+      color: var(--bg);
+    }
+
+    #toolbar .session-info {
+      font-size: 8px;
+      color: var(--dim);
+      margin-right: 2px;
+    }
+
+    #toolbar .pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      display: none;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .tb-btn.live-active .pulse-dot,
+    .tb-btn.voice-active .pulse-dot {
+      display: inline-block;
+    }
+
+    /* ─── COLLAPSIBLE PANEL ─── */
+    #controls-panel {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+      max-height: 200px;
+      overflow: hidden;
+      flex-shrink: 0;
+      z-index: 9;
+    }
+
+    #controls-panel.collapsed {
+      max-height: 0;
+      padding: 0 10px;
+      opacity: 0;
+      border-bottom: none;
+    }
+
+    .panel-section {
+      display: block;
+    }
+
+    .panel-label {
+      font-size: 7px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    #controls-panel .api-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    #controls-panel .api-row input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 5px 7px;
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      outline: none;
+    }
+
+    #controls-panel .api-row input:focus {
+      border-color: var(--neon);
+    }
+
+    #controls-panel .api-row input::placeholder {
+      color: var(--dim);
+    }
+
+    #controls-panel .clear-btn {
+      font-size: 9px;
+      padding: 3px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+    }
+
+    #controls-panel .clear-btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ─── OVERLAYS ─── */
+    .live-feed,
+    .screenshot-preview,
+    .transcript-area,
+    .error-msg {
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+
+    .live-feed {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      height: 70px;
+      margin-top: 4px;
+    }
+
+    .live-feed.show {
+      display: block;
+    }
+
+    .live-feed img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.6;
+    }
+
+    .live-feed .feed-overlay {
+      position: absolute;
+      top: 3px;
+      left: 5px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .live-feed .feed-label {
+      font-size: 7px;
+      color: var(--red);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 1px 4px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .live-feed .feed-label .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .live-feed .analyze-btn {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border: 1px solid var(--orange);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.8);
+      color: var(--orange);
+      cursor: pointer;
+    }
+
+    .screenshot-preview {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      max-height: 70px;
+      margin-top: 4px;
+    }
+
+    .screenshot-preview.show {
+      display: block;
+    }
+
+    .screenshot-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.7;
+    }
+
+    .screenshot-preview .overlay-label {
+      position: absolute;
+      top: 3px;
+      left: 5px;
+      font-size: 7px;
+      color: var(--orange);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .screenshot-preview .dismiss-btn {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 9px;
+      color: var(--dim);
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      padding: 1px 4px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .transcript-area {
+      display: none;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 9px;
+      color: var(--text);
+      max-height: 60px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .transcript-area.show {
+      display: block;
+    }
+
+    .transcript-label {
+      font-size: 6px;
+      color: var(--red);
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .transcript-label .live-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 9px;
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 51, 102, 0.3);
+      border-radius: 4px;
+      background: rgba(255, 51, 102, 0.05);
+      display: none;
+      margin-top: 4px;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    #output::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #output::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    #think-container {
+      flex-shrink: 0;
+      padding: 0 8px;
+    }
+
+    #input-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding: 6px 8px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+      position: relative;
+    }
+
+    #input-bar textarea {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.4;
+      resize: none;
+      outline: none;
+      min-height: 32px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    #input-bar textarea:focus {
+      border-color: var(--cyan);
+    }
+
+    #input-bar textarea::placeholder {
+      color: var(--dim);
+    }
+
+    #input-bar .char-count {
+      position: absolute;
+      right: 52px;
+      bottom: 12px;
+      font-size: 7px;
+      color: var(--dim);
+    }
+
+    #input-bar .run-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon), var(--cyan));
+      color: var(--bg);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+
+    #input-bar .run-btn:hover {
+      box-shadow: 0 0 16px rgba(0, 255, 136, 0.3);
+      transform: scale(1.05);
+    }
+
+    #input-bar .run-btn:active {
+      transform: scale(0.95);
+    }
+
+    .chat-msg {
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .chat-msg.user {
+      background: rgba(0, 200, 255, 0.08);
+      border: 1px solid rgba(0, 200, 255, 0.15);
+      border-left: 3px solid var(--cyan);
+      color: var(--cyan);
+    }
+
+    .chat-msg.assistant {
+      background: rgba(0, 255, 136, 0.04);
+      border: 1px solid rgba(0, 255, 136, 0.1);
+      border-left: 3px solid var(--neon);
+      color: var(--text-bright);
+    }
+
+    .chat-msg .msg-label {
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: 0.6;
+    }
+
+    .chat-msg.user .msg-label {
+      color: var(--cyan);
+    }
+
+    .chat-msg.assistant .msg-label {
+      color: var(--neon);
+    }
+
+    .chat-msg .msg-copy {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--dim);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .chat-msg:hover .msg-copy {
+      opacity: 1;
+    }
+
+    .think-block {
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .think-block summary {
+      padding: 5px 8px;
+      font-size: 8px;
+      color: var(--dim);
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .think-block .think-content {
+      padding: 8px;
+      font-size: 9px;
+      color: var(--dim);
+      line-height: 1.5;
+      white-space: pre-wrap;
+      font-family: var(--font-mono);
+    }
+
+    .opacity-control {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .opacity-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--neon);
+      cursor: pointer;
+    }
+
+    .opacity-val {
+      font-size: 8px;
+      color: var(--neon);
+      min-width: 24px;
+      text-align: right;
+    }
+
+    .toggle-prot-btn {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 3px 7px;
+      border: 1px solid var(--neon);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--neon);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .toggle-prot-btn.off {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.5);
+        opacity: 0.5;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--bg);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-root">
+    <!-- TITLEBAR -->
+    <div id="titlebar">
+      <div class="left">
+        <span class="logo">👻</span>
+        <span class="title">GHOST-RUST</span>
+        <span class="stealth-badge">STEALTH</span>
+      </div>
+      <div class="header-info">
+        <span id="platform-label">—</span>
+        <span>PROT</span>
+        <span class="prot-dot" id="prot-dot"></span>
+        <span id="prot-status-text">ON</span>
+      </div>
+      <div class="controls">
+        <button id="btn-minimize" title="Minimize">─</button>
+        <button class="close-btn" id="btn-close" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- COMPACT TOOLBAR -->
+    <div id="toolbar">
+      <button class="tb-btn" id="tb-toggle" title="Toggle controls panel">⚙️</button>
+      <div class="tb-sep"></div>
+      <button class="mode-btn active" data-mode="explain" title="Explanation Mode">💡</button>
+      <button class="mode-btn" data-mode="hints" title="Hints Mode">🔍</button>
+      <button class="mode-btn" data-mode="solution" title="Solution Mode">⚙️</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="capture-btn" title="Take Screenshot (Ctrl+Shift+C)">📸</button>
+      <button class="tb-btn" id="live-btn" title="Live Monitor (Experimental)">🖥️</button>
+      <button class="tb-btn voice-btn" id="voice-btn" title="Voice Input (Alt+Shift+V)">🎤</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="lang-btn" title="Switch Language">PY</button>
+      <div style="flex:1"></div>
+      <span class="session-info" id="session-info">0</span>
+      <button class="tb-btn tb-danger" id="clear-btn" title="Clear session">🗑️</button>
+    </div>
+
+    <div id="controls-panel" class="collapsed">
+      <div class="panel-section">
+        <label class="panel-label">🔑 AI API KEY</label>
+        <div class="api-row">
+          <input type="password" id="api-key" placeholder="Enter API Key..." />
+          <button class="clear-btn" id="clear-key-btn">✕</button>
+        </div>
+      </div>
+      <div class="panel-section">
+        <label class="panel-label">🌐 BASE URL</label>
+        <input type="text" id="api-url" placeholder="https://api.openai.com/v1" />
+      </div>
+      <div class="panel-section">
+        <label class="panel-label">🤖 MODEL</label>
+        <input type="text" id="api-model" placeholder="moonshotai/kimi-k2.5" />
+      </div>
+      <div class="panel-section" style="display:flex;gap:8px;align-items:center;">
+        <label class="panel-label" style="margin-bottom:0;">🛡️ STEALTH</label>
+        <div class="opacity-control">
+          <input type="range" class="opacity-slider" id="opacity-slider" min="10" max="100" value="100" />
+          <span class="opacity-val" id="opacity-val">100%</span>
+        </div>
+        <button class="toggle-prot-btn" id="toggle-prot-btn">🛡️ ON</button>
+      </div>
+    </div>
+
+    <!-- OVERLAYS -->
+    <div class="live-feed" id="live-feed">
+      <span class="feed-overlay">
+        <span class="feed-label"><span class="dot"></span> LIVE</span>
+        <button class="analyze-btn" id="analyze-live-btn">⚡ ANALYZE</button>
+      </span>
+      <img id="live-img" src="" />
+    </div>
+
+    <div class="screenshot-preview" id="screenshot-preview">
+      <span class="overlay-label">📸 Captured</span>
+      <button class="dismiss-btn" id="dismiss-screenshot">✕</button>
+      <img id="screenshot-img" src="" />
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div id="output">
+      <div id="chat-messages"></div>
+    </div>
+    <div id="think-container"></div>
+
+    <div id="input-bar">
+      <textarea id="problem-input" placeholder="Ask GHOST..." rows="1"></textarea>
+      <span class="char-count" id="char-count">0</span>
+      <button class="run-btn" id="run-btn">▶</button>
+    </div>
+  </div>
+
+  <script type="module">
+    // --- TAURI API ---
+    const { invoke } = window.__TAURI__.core;
+    const { getCurrentWindow } = window.__TAURI__.window;
+    const { listen } = window.__TAURI__.event;
+
+    const appWindow = getCurrentWindow();
+
+    // --- STATE ---
+    // --- STATE ---
+    // --- STATE ---
+    let aiKey = localStorage.getItem('ghost_ai_key') || '';
+    let apiUrl = localStorage.getItem('ghost_api_url') || 'https://api.openai.com/v1';
+    let aiModel = localStorage.getItem('ghost_ai_model') || 'moonshotai/kimi-k2.5';
+    let conversationHistory = JSON.parse(localStorage.getItem('ghost_chat_history') || '[]');
+    let currentScreenshot = null;
+    let liveMonitorActive = false;
+    let protectionOn = true;
+    let isLoading = false;
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    // --- INIT ---
+    invoke('get_platform').then(p => {
+      $('#platform-label').textContent = p === 'windows' ? '🪟' : p === 'macos' ? '🍎' : '🐧';
+    });
+
+    // --- TITLEBAR ---
+    $('#titlebar').onpointerdown = (e) => {
+      // Don't drag if clicking a button
+      if (e.target.closest('button')) return;
+      appWindow.startDragging();
+    };
+    $('#btn-minimize').onclick = () => appWindow.minimize();
+    $('#btn-close').onclick = () => appWindow.close();
+    // --- TOOLBAR MODES ---
+    let activeMode = 'explain';
+    $$('.mode-btn').forEach(btn => {
+      btn.onclick = () => {
+        $$('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeMode = btn.dataset.mode;
+        console.log("Mode switched to:", activeMode);
+      };
+    });
+
+    const langs = ['PY', 'JS', 'RS', 'TS', 'GO'];
+    let langIdx = 0;
+    $('#lang-btn').onclick = () => {
+      langIdx = (langIdx + 1) % langs.length;
+      $('#lang-btn').textContent = langs[langIdx];
+    };
+
+    $('#clear-btn').onclick = () => {
+      if (confirm('Clear session?')) {
+        conversationHistory = [];
+        $('#chat-messages').innerHTML = '';
+        saveHistory();
+      }
+    };
+
+    // --- API CONFIG ---
+    const apiKeyInput = $('#api-key');
+    const apiUrlInput = $('#api-url');
+    const apiModelInput = $('#api-model');
+
+    if (aiKey) apiKeyInput.value = aiKey;
+    apiUrlInput.value = apiUrl;
+    apiModelInput.value = aiModel;
+
+    apiKeyInput.oninput = () => {
+      aiKey = apiKeyInput.value.trim();
+      localStorage.setItem('ghost_ai_key', aiKey);
+    };
+    apiUrlInput.oninput = () => {
+      apiUrl = apiUrlInput.value.trim();
+      localStorage.setItem('ghost_api_url', apiUrl);
+    };
+    apiModelInput.oninput = () => {
+      aiModel = apiModelInput.value.trim();
+      localStorage.setItem('ghost_ai_model', aiModel);
+    };
+
+    $('#clear-key-btn').onclick = () => {
+      aiKey = '';
+      apiKeyInput.value = '';
+      localStorage.removeItem('ghost_ai_key');
+    };
+
+    // --- PANEL ---
+    $('#tb-toggle').onclick = () => $('#controls-panel').classList.toggle('collapsed');
+
+    // --- OPACITY ---
+    const opacitySlider = $('#opacity-slider');
+    opacitySlider.oninput = () => {
+      const val = opacitySlider.value;
+      $('#opacity-val').textContent = val + '%';
+      $('#app-root').style.opacity = val / 100;
+    };
+
+    // --- PROTECTION ---
+    $('#toggle-prot-btn').onclick = () => invoke('toggle_protection');
+    listen('protection-status', (event) => {
+      protectionOn = event.payload;
+      const dot = $('#prot-dot');
+      const text = $('#prot-status-text');
+      const btn = $('#toggle-prot-btn');
+
+      if (protectionOn) {
+        dot.classList.remove('off');
+        text.textContent = 'ON';
+        btn.textContent = '🛡️ ON';
+        btn.classList.remove('off');
+      } else {
+        dot.classList.add('off');
+        text.textContent = 'OFF';
+        btn.textContent = '⚠️ OFF';
+        btn.classList.add('off');
+      }
+    });
+
+    // --- CAPTURE ---
+    $('#capture-btn').onclick = async () => {
+      try {
+        const base64 = await invoke('capture_screen');
+        currentScreenshot = base64;
+        $('#screenshot-img').src = base64;
+        $('#screenshot-preview').classList.add('show');
+      } catch (e) {
+        showError(e);
+      }
+    };
+
+    $('#live-btn').onclick = () => {
+      liveMonitorActive = !liveMonitorActive;
+      $('#live-btn').classList.toggle('live-active', liveMonitorActive);
+      if (liveMonitorActive) {
+        showError('Live Monitoring active (Auto-capture simulation)');
+      }
+    };
+
+    const voiceBtn = $('#voice-btn');
+    voiceBtn.onclick = () => {
+      voiceBtn.classList.toggle('voice-active');
+      if (voiceBtn.classList.contains('voice-active')) {
+        showError('Voice mode ready (Shortcuts active)');
+      }
+    };
+    $('#dismiss-screenshot').onclick = () => {
+      currentScreenshot = null;
+      $('#screenshot-preview').classList.remove('show');
+    };
+
+    listen('shortcut-capture', () => {
+      $('#capture-btn').click();
+    });
+    listen('shortcut-hide', () => {
+      const root = $('#app-root');
+      const current = parseFloat(getComputedStyle(root).opacity);
+      root.style.opacity = current < 0.1 ? 0.9 : 0.02; // Ghostly hide
+    });
+
+    // --- CHAT ---
+    const problemInput = $('#problem-input');
+    problemInput.oninput = () => {
+      $('#char-count').textContent = problemInput.value.length;
+      problemInput.style.height = 'auto';
+      problemInput.style.height = Math.min(problemInput.scrollHeight, 100) + 'px';
+    };
+
+    $('#run-btn').onclick = runGhost;
+    window.onkeydown = (e) => {
+      if (e.ctrlKey && e.key === 'Enter') runGhost();
+    };
+
+    async function runGhost() {
+      const prompt = problemInput.value.trim();
+      if (!prompt && !currentScreenshot) return;
+      if (!aiKey) { showError('API Key Required'); return; }
+
+      const lang = $('#lang-btn').textContent;
+      const modePrompt = activeMode === 'explain' ? 'Explain the logic and concept behind this problem clearly.' :
+        activeMode === 'hints' ? 'Give me subtle hints to solve this without giving the full code.' :
+          'Provide a complete, optimized solution with code.';
+
+      const msg = `[Language: ${lang}] [Mode: ${activeMode.toUpperCase()}] ${prompt || '[Screen Analysis]'}\n\nContext: ${modePrompt}`;
+
+      addChatBubble('user', msg);
+      conversationHistory.push({ role: 'user', content: msg });
+
+      problemInput.value = '';
+      $('#char-count').textContent = '0';
+
+      isLoading = true;
+      $('#run-btn').disabled = true;
+      $('#run-btn').innerHTML = '<span class="spinner"></span>';
+
+      const assistantBubble = addChatBubble('assistant', 'Thinking...');
+
+      try {
+        const response = await invoke('process_ai_request', {
+          prompt: msg,
+          image: currentScreenshot,
+          history: conversationHistory.slice(0, -1),
+          apiKey: aiKey,
+          apiUrl: apiUrl,
+          model: aiModel
+        });
+
+        assistantBubble.textContent = response;
+        conversationHistory.push({ role: 'assistant', content: response });
+        saveHistory();
+      } catch (e) {
+        showError(e);
+        assistantBubble.textContent = 'Error: ' + e;
+      } finally {
+        isLoading = false;
+        $('#run-btn').disabled = false;
+        $('#run-btn').textContent = '▶';
+      }
+    }
+
+    function addChatBubble(role, text) {
+      const div = document.createElement('div');
+      div.className = `chat-msg ${role}`;
+      div.innerHTML = `<div class="msg-label">${role === 'user' ? 'YOU' : 'GHOST'}</div><div class="msg-body">${text}</div>`;
+      $('#chat-messages').appendChild(div);
+      $('#output').scrollTop = $('#output').scrollHeight;
+      return div.querySelector('.msg-body');
+    }
+
+    function saveHistory() {
+      localStorage.setItem('ghost_chat_history', JSON.stringify(conversationHistory.slice(-20)));
+    }
+
+    function showError(m) {
+      const el = $('#error-msg');
+      el.textContent = m;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+  </script>
+</body>
+
+</html>
