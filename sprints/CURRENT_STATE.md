@@ -7,7 +7,7 @@
 ## Last Updated
 - **Date:** 2026-07-05
 - **Active Branch:** `phase` (Tauri/Rust), `main` (Electron)
-- **Sprint:** Sprint 2
+- **Sprint:** Sprint 3 (Completed)
 
 ---
 
@@ -72,6 +72,11 @@ ghost-phase/
 - [x] Settings syncing to Supabase settings table (GROQ key, Gemini key, pref lang)
 - [x] First-time OAuth login localStorage key migration
 - [x] Graceful offline fallback bypass to local mode
+- [x] Collapsible sidebar panel overlay listing past chat sessions (800x600 layout intact)
+- [x] Session list syncing via Supabase Database & Realtime postgres updates channel
+- [x] Session auto-titling based on first message
+- [x] Scroll-to-bottom indicator floating action button
+- [x] Offline fallback local session storage caching in localStorage
 
 ### Tauri/Rust Version (`/ghost-rust/`)
 - [x] Frameless, always-on-top floating overlay window (800x600)
@@ -101,6 +106,12 @@ ghost-phase/
 - [x] Custom open_in_browser backend Rust command to open default browser
 - [x] settings table cloud sync and local migration
 - [x] Offline mode manual bypass
+- [x] Local HTTP TCP listener bound on port 1420 to capture redirect code
+- [x] Collapsible sidebar panel overlay listing past chat sessions (800x600 layout intact)
+- [x] Session list syncing via Supabase Database & Realtime postgres updates channel
+- [x] Session auto-titling based on first message
+- [x] Scroll-to-bottom indicator floating action button
+- [x] Offline fallback local session storage caching in localStorage
 
 ---
 
@@ -109,9 +120,7 @@ ghost-phase/
 | # | Version | Issue |
 |---|---------|-------|
 | 1 | Both | Gemini free tier returns 503 Service Unavailable under high demand |
-| 2 | Both | Chat history uses localStorage — not synced across devices (Deferred to Sprint 3) |
-| 3 | Both | No per-chat sessions — single continuous chat thread only (Deferred to Sprint 3) |
-| 4 | Tauri | debug println! still active in toggle_protection |
+| 2 | Tauri | debug println! still active in toggle_protection |
 
 ---
 
@@ -124,6 +133,6 @@ ghost-phase/
 | Frontend | Vanilla HTML/CSS/JS | Vanilla HTML/CSS/JS |
 | AI Providers | Groq, Gemini | Any OpenAI-compatible, Gemini |
 | Database | Supabase (Cloud Sync) | Supabase (Cloud Sync) |
-| Chat Storage | localStorage | localStorage |
+| Chat Storage | Supabase & Local Cache | Supabase & Local Cache |
 | Auth | Supabase Google OAuth (PKCE) | Supabase Google OAuth (PKCE) |
 | Stealth | koffi + Win32 FFI | windows crate + Win32 |

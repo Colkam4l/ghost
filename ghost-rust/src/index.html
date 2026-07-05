@@ -1056,6 +1056,175 @@
       background: var(--bg);
       object-fit: cover;
     }
+
+    /* ─── SIDEBAR & MULTI-CHAT ─── */
+    #sidebar-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    #sidebar-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    #sidebar {
+      position: absolute;
+      top: 36px;
+      left: 0;
+      width: 220px;
+      height: calc(100% - 36px);
+      background: rgba(8, 9, 12, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 95;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    #sidebar.open {
+      transform: translateX(0);
+    }
+    
+    .new-chat-btn {
+      width: 100%;
+      height: 32px;
+      border: 1px dashed var(--neon);
+      border-radius: 4px;
+      background: rgba(0, 255, 136, 0.03);
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+    .new-chat-btn:hover {
+      background: rgba(0, 255, 136, 0.08);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+    }
+    
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+    
+    .session-item {
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.01);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .session-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border);
+    }
+    .session-item.active {
+      background: rgba(0, 255, 136, 0.04);
+      border-color: var(--neon);
+    }
+    
+    .session-info-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+      flex: 1;
+    }
+    .session-title-text {
+      font-size: 9px;
+      color: var(--text-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+    .session-item.active .session-title-text {
+      color: var(--neon);
+      font-weight: bold;
+    }
+    .session-date-text {
+      font-size: 7px;
+      color: var(--dim);
+      text-align: left;
+    }
+    
+    .session-delete-btn {
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      opacity: 0;
+      transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+    }
+    .session-item:hover .session-delete-btn {
+      opacity: 1;
+    }
+    .session-delete-btn:hover {
+      background: rgba(255, 68, 68, 0.15);
+      color: var(--red);
+    }
+    
+    /* ─── SCROLL TO BOTTOM BUTTON ─── */
+    #scroll-bottom-btn {
+      position: absolute;
+      bottom: 50px;
+      right: 20px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--neon);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      z-index: 80;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+      font-size: 10px;
+    }
+    #scroll-bottom-btn.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    #scroll-bottom-btn:hover {
+      border-color: var(--neon);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+    }
   </style>
 </head>
 
@@ -1106,8 +1275,23 @@
       </div>
     </div>
 
+    <!-- SIDEBAR BLUR BACKDROP -->
+    <div id="sidebar-backdrop"></div>
+
+    <!-- SIDEBAR PANEL -->
+    <div id="sidebar">
+      <button class="new-chat-btn" id="btn-new-chat">
+        <span>+</span> New Chat
+      </button>
+      <div class="session-list" id="session-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
     <!-- COMPACT TOOLBAR -->
     <div id="toolbar">
+      <button class="tb-btn" id="btn-sidebar-toggle" title="Toggle chats sidebar">☰</button>
+      <div class="tb-sep"></div>
       <button class="tb-btn" id="tb-toggle" title="Toggle controls panel">⚙️</button>
       <div class="tb-sep"></div>
       <button class="mode-btn active" data-mode="explain" title="Explanation Mode">💡</button>
@@ -1171,8 +1355,9 @@
 
     <div class="error-msg" id="error-msg"></div>
 
-    <div id="output">
+    <div id="output" style="position: relative;">
       <div id="chat-messages"></div>
+      <button id="scroll-bottom-btn" title="Scroll to bottom">▼</button>
     </div>
     <div id="think-container"></div>
 
@@ -1417,6 +1602,10 @@
 
       addChatBubble('user', msg);
       conversationHistory.push({ role: 'user', content: msg });
+      await saveMessageToCloud('user', msg);
+      if (conversationHistory.length === 1) {
+        await handleAutoTitle(prompt || '[Screen Analysis]');
+      }
 
       problemInput.value = '';
       $('#char-count').textContent = '0';
@@ -1441,6 +1630,7 @@
         await typewriter(response, assistantBubble);
         conversationHistory.push({ role: 'assistant', content: response });
         saveHistory();
+        await saveMessageToCloud('assistant', response);
       } catch (e) {
         showError(e);
         assistantBubble.textContent = 'Error: ' + e;
@@ -1569,6 +1759,10 @@
 
             // Load and sync settings
             await loadUserSettings();
+
+            // Load multi-chat sessions and start realtime updates
+            await loadSessions();
+            setupRealtimeSync();
           } else {
             currentUser = null;
             $('#auth-overlay').classList.remove('hidden');
@@ -1684,9 +1878,10 @@
     });
 
     // Work Offline button action
-    $('#btn-work-offline').addEventListener('click', () => {
+    $('#btn-work-offline').addEventListener('click', async () => {
       $('#auth-overlay').classList.add('hidden');
       $('#account-status-label').textContent = 'Offline Mode (Local)';
+      await loadSessions();
     });
 
     // Sign Out button action
@@ -1702,6 +1897,327 @@
         $('#auth-overlay').classList.remove('hidden');
       }
     });
+
+    // ─── CHAT SESSIONS & SIDEBAR SYSTEM ───
+    let currentSession = null;
+    let sessionsList = [];
+    let realtimeChannel = null;
+
+    // Toggle Sidebar Action
+    $('#btn-sidebar-toggle').addEventListener('click', toggleSidebar);
+    $('#sidebar-backdrop').addEventListener('click', closeSidebar);
+
+    function toggleSidebar() {
+      $('#sidebar').classList.toggle('open');
+      $('#sidebar-backdrop').classList.toggle('show');
+    }
+
+    function closeSidebar() {
+      $('#sidebar').classList.remove('open');
+      $('#sidebar-backdrop').classList.remove('show');
+    }
+
+    // Scroll to Bottom Indicator Action
+    const outputEl = $('#output');
+    const scrollBottomBtn = $('#scroll-bottom-btn');
+    outputEl.addEventListener('scroll', () => {
+      const threshold = 150;
+      const isAtBottom = outputEl.scrollHeight - outputEl.scrollTop - outputEl.clientHeight < threshold;
+      if (isAtBottom) {
+        scrollBottomBtn.classList.remove('show');
+      } else {
+        scrollBottomBtn.classList.add('show');
+      }
+    });
+    scrollBottomBtn.addEventListener('click', () => {
+      outputEl.scrollTop = outputEl.scrollHeight;
+    });
+
+    // Create New Session
+    $('#btn-new-chat').addEventListener('click', createNewSession);
+
+    async function createNewSession() {
+      if (!db || !currentUser) {
+        const offlineId = 'offline-' + Date.now();
+        const newSess = { id: offlineId, title: 'New Chat', updated_at: new Date().toISOString() };
+        sessionsList.unshift(newSess);
+        currentSession = newSess;
+        conversationHistory = [];
+        localStorage.setItem('ghost_chat_history', '[]');
+        localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
+        localStorage.setItem('ghost_current_session_id', offlineId);
+        renderSidebarSessions();
+        renderFullHistory();
+        updateSessionInfo();
+        closeSidebar();
+        return;
+      }
+      
+      try {
+        const { data, error } = await db
+          .from('sessions')
+          .insert({
+            user_id: currentUser.id,
+            title: 'New Chat'
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        currentSession = data;
+        conversationHistory = [];
+        saveHistory();
+        await loadSessions();
+        closeSidebar();
+      } catch (e) {
+        console.error('[GHOST] Create session error:', e);
+        showError('Failed to create new chat session: ' + e.message);
+      }
+    }
+
+    async function loadSessions() {
+      if (!db || !currentUser) {
+        sessionsList = JSON.parse(localStorage.getItem('ghost_offline_sessions') || '[]');
+        if (sessionsList.length === 0) {
+          const defaultSess = { id: 'offline-default', title: 'New Chat', updated_at: new Date().toISOString() };
+          sessionsList = [defaultSess];
+          localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
+        }
+        const lastSessId = localStorage.getItem('ghost_current_session_id') || sessionsList[0].id;
+        currentSession = sessionsList.find(s => s.id === lastSessId) || sessionsList[0];
+        renderSidebarSessions();
+        await loadSessionMessages(currentSession.id);
+        return;
+      }
+      
+      try {
+        const { data, error } = await db
+          .from('sessions')
+          .select('*')
+          .order('updated_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        sessionsList = data || [];
+        if (sessionsList.length === 0) {
+          await createNewSession();
+          return;
+        }
+        
+        const lastSessionId = localStorage.getItem('ghost_current_session_id');
+        currentSession = sessionsList.find(s => s.id === lastSessionId) || sessionsList[0];
+        
+        renderSidebarSessions();
+        await loadSessionMessages(currentSession.id);
+      } catch (e) {
+        console.error('[GHOST] Load sessions error:', e);
+        showError('Load sessions error: ' + e.message);
+      }
+    }
+
+    async function loadSessionMessages(sessionId) {
+      localStorage.setItem('ghost_current_session_id', sessionId);
+      if (sessionId.startsWith('offline-')) {
+        conversationHistory = JSON.parse(localStorage.getItem(`ghost_chat_history_${sessionId}`) || '[]');
+        renderFullHistory();
+        updateSessionInfo();
+        return;
+      }
+      
+      if (!db || !currentUser) return;
+      try {
+        const { data, error } = await db
+          .from('messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true });
+          
+        if (error) throw error;
+        
+        conversationHistory = (data || []).map(m => ({
+          role: m.role,
+          content: m.content
+        }));
+        
+        renderFullHistory();
+        updateSessionInfo();
+      } catch (e) {
+        console.error('[GHOST] Load messages error:', e);
+        showError('Failed to load session messages: ' + e.message);
+      }
+    }
+
+    async function deleteSession(id, event) {
+      if (event) event.stopPropagation();
+      if (!confirm('Are you sure you want to delete this chat session?')) return;
+      
+      if (id.startsWith('offline-')) {
+        sessionsList = sessionsList.filter(s => s.id !== id);
+        localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
+        localStorage.removeItem(`ghost_chat_history_${id}`);
+        if (currentSession && currentSession.id === id) {
+          localStorage.removeItem('ghost_current_session_id');
+        }
+        await loadSessions();
+        return;
+      }
+      
+      if (!db) return;
+      try {
+        const { error } = await db
+          .from('sessions')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        if (currentSession && currentSession.id === id) {
+          localStorage.removeItem('ghost_current_session_id');
+        }
+        await loadSessions();
+      } catch (e) {
+        console.error('[GHOST] Delete session error:', e);
+        showError('Failed to delete chat: ' + e.message);
+      }
+    }
+
+    function formatRelativeDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    function renderSidebarSessions() {
+      const listContainer = $('#session-list');
+      listContainer.innerHTML = '';
+      
+      sessionsList.forEach(session => {
+        const activeClass = (currentSession && currentSession.id === session.id) ? 'active' : '';
+        const dateText = formatRelativeDate(session.updated_at);
+        
+        const item = document.createElement('div');
+        item.className = `session-item ${activeClass}`;
+        item.onclick = () => {
+          currentSession = session;
+          renderSidebarSessions();
+          loadSessionMessages(session.id);
+          closeSidebar();
+        };
+        
+        item.innerHTML = `
+          <div class="session-info-left">
+            <div class="session-title-text">${escapeHTML(session.title)}</div>
+            <div class="session-date-text">${dateText}</div>
+          </div>
+          <button class="session-delete-btn" title="Delete chat">✕</button>
+        `;
+        
+        item.querySelector('.session-delete-btn').onclick = (e) => deleteSession(session.id, e);
+        listContainer.appendChild(item);
+      });
+    }
+
+    async function saveMessageToCloud(role, content) {
+      if (currentSession) {
+        if (currentSession.id.startsWith('offline-')) {
+          const historyKey = `ghost_chat_history_${currentSession.id}`;
+          let offlineHist = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          offlineHist.push({ role, content });
+          localStorage.setItem(historyKey, JSON.stringify(offlineHist));
+          
+          currentSession.updated_at = new Date().toISOString();
+          const sessIndex = sessionsList.findIndex(s => s.id === currentSession.id);
+          if (sessIndex !== -1) {
+            sessionsList[sessIndex].updated_at = currentSession.updated_at;
+            localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
+          }
+          renderSidebarSessions();
+          return;
+        }
+        
+        if (!db || !currentUser) return;
+        try {
+          const { error } = await db
+            .from('messages')
+            .insert({
+              session_id: currentSession.id,
+              user_id: currentUser.id,
+              role,
+              content
+            });
+            
+          if (error) throw error;
+          
+          const now = new Date().toISOString();
+          await db
+            .from('sessions')
+            .update({ updated_at: now })
+            .eq('id', currentSession.id);
+            
+        } catch (err) {
+          console.error('[GHOST] Error saving message to cloud:', err);
+        }
+      }
+    }
+
+    async function handleAutoTitle(firstMessageText) {
+      if (currentSession && currentSession.title === 'New Chat') {
+        const newTitle = firstMessageText.slice(0, 40) + (firstMessageText.length > 40 ? '...' : '');
+        currentSession.title = newTitle;
+        
+        if (currentSession.id.startsWith('offline-')) {
+          const sessIndex = sessionsList.findIndex(s => s.id === currentSession.id);
+          if (sessIndex !== -1) {
+            sessionsList[sessIndex].title = newTitle;
+            localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
+          }
+          renderSidebarSessions();
+          return;
+        }
+        
+        if (!db) return;
+        try {
+          await db
+            .from('sessions')
+            .update({ title: newTitle })
+            .eq('id', currentSession.id);
+        } catch (err) {
+          console.error('[GHOST] Auto title error:', err);
+        }
+      }
+    }
+
+    function setupRealtimeSync() {
+      if (!db || !currentUser) return;
+      if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+      }
+      realtimeChannel = db.channel('sessions-channel')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `user_id=eq.${currentUser.id}`
+        }, () => {
+          loadSessions();
+        })
+        .subscribe();
+    }
+
+    function escapeHTML(s) {
+      if (!s) return '';
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
 
     // Run Supabase initialization
     initSupabase();
