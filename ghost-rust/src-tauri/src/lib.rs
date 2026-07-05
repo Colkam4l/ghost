@@ -154,10 +154,19 @@ async fn call_universal_api(
     base_url: &str,
     model: &str,
 ) -> Result<String, String> {
-    let url = if base_url.ends_with("/chat/completions") {
-        base_url.to_string()
+    let mut normalized_url = base_url.trim().to_string();
+    if normalized_url.contains("api.groq.com") && !normalized_url.contains("/openai") {
+        if normalized_url.ends_with("/v1") {
+            normalized_url = normalized_url.replace("/v1", "/openai/v1");
+        } else if normalized_url.ends_with("api.groq.com") {
+            normalized_url = format!("{}/openai/v1", normalized_url);
+        }
+    }
+
+    let url = if normalized_url.ends_with("/chat/completions") {
+        normalized_url
     } else {
-        format!("{}/chat/completions", base_url.trim_end_matches('/'))
+        format!("{}/chat/completions", normalized_url.trim_end_matches('/'))
     };
 
     let mut messages = history;
