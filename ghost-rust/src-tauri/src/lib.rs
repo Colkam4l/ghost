@@ -129,13 +129,20 @@ async fn process_ai_request(
 ) -> Result<String, String> {
     let client = reqwest::Client::new();
     
-    // Special case for Google Gemini (if URL contains googleapis)
-    if api_url.contains("googleapis.com") || api_key.starts_with("AIza") {
-        return call_gemini_vision(&client, &prompt, image, &api_key, &model).await;
+    let trimmed_key = api_key.trim();
+    let trimmed_url = api_url.trim();
+    let trimmed_model = model.trim();
+    
+    println!("[TAURI] process_ai_request: url='{}', model='{}', key_len={}, key_starts_with_AIza={}", 
+        trimmed_url, trimmed_model, trimmed_key.len(), trimmed_key.starts_with("AIza"));
+        
+    // Special case for Google Gemini (if URL contains googleapis or key starts with AIza)
+    if trimmed_url.contains("googleapis.com") || trimmed_key.starts_with("AIza") {
+        return call_gemini_vision(&client, &prompt, image, trimmed_key, trimmed_model).await;
     }
 
     // Default: Use OpenAI-compatible universal requester
-    call_universal_api(&client, &prompt, image, history, &api_key, &api_url, &model).await
+    call_universal_api(&client, &prompt, image, history, trimmed_key, trimmed_url, trimmed_model).await
 }
 
 async fn call_universal_api(

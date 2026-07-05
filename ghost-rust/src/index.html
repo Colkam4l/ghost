@@ -1792,17 +1792,17 @@
 
         if (data) {
           if (data.api_key) {
-            aiKey = data.api_key;
+            aiKey = data.api_key.trim();
             apiKeyInput.value = aiKey;
             localStorage.setItem('ghost_ai_key', aiKey);
           }
           if (data.api_url) {
-            apiUrl = data.api_url;
+            apiUrl = data.api_url.trim();
             apiUrlInput.value = apiUrl;
             localStorage.setItem('ghost_api_url', apiUrl);
           }
           if (data.ai_model) {
-            aiModel = data.ai_model;
+            aiModel = data.ai_model.trim();
             apiModelInput.value = aiModel;
             localStorage.setItem('ghost_ai_model', aiModel);
           }

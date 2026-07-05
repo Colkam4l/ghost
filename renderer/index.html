@@ -2284,12 +2284,12 @@
 
         if (data) {
           if (data.api_key) {
-            apiKey = data.api_key;
+            apiKey = data.api_key.trim();
             apiKeyInput.value = apiKey;
             localStorage.setItem('ghost_api_key', apiKey);
           }
           if (data.gemini_key) {
-            geminiKey = data.gemini_key;
+            geminiKey = data.gemini_key.trim();
             geminiKeyInput.value = geminiKey;
             localStorage.setItem('ghost_gemini_key', geminiKey);
           }
