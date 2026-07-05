@@ -577,6 +577,8 @@
       padding: 8px;
       position: relative;
       z-index: 1;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     #output::-webkit-scrollbar {
@@ -2451,6 +2453,7 @@
           
         if (error) throw error;
         currentSession = data;
+        localStorage.setItem('ghost_current_session_id', data.id);
         conversationHistory = [];
         saveHistory();
         await loadSessions();
