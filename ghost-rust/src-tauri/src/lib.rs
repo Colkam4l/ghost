@@ -1,10 +1,10 @@
 #[cfg(windows)]
-use windows::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE, WDA_NONE, WINDOW_DISPLAY_AFFINITY};
+use windows::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE, WDA_NONE};
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 
 use std::sync::Mutex;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 
 struct ProtectionState(Mutex<bool>);
 
@@ -25,6 +25,7 @@ fn toggle_protection(window: tauri::Window, state: State<'_, ProtectionState>) -
     *protection_enabled = !*protection_enabled;
     
     let new_status = *protection_enabled;
+    println!("[TAURI] toggle_protection called. New status: {}", new_status);
 
     #[cfg(windows)]
     {
@@ -34,9 +35,13 @@ fn toggle_protection(window: tauri::Window, state: State<'_, ProtectionState>) -
             } else {
                 WDA_NONE
             };
+            println!("[TAURI] Setting window display affinity for HWND {:?} to {:?}", hwnd, affinity);
             unsafe {
-                let _ = SetWindowDisplayAffinity(HWND(hwnd.0 as _), affinity);
+                let res = SetWindowDisplayAffinity(HWND(hwnd.0 as _), affinity);
+                println!("[TAURI] SetWindowDisplayAffinity result: {:?}", res);
             }
+        } else {
+            println!("[TAURI] Failed to get HWND for window");
         }
     }
     
@@ -148,7 +153,7 @@ async fn call_universal_api(
 }
 
 async fn call_gemini_vision(client: &reqwest::Client, prompt: &str, image_data: Option<String>, key: &str, model: &str) -> Result<String, String> {
-    let actual_model = if model.is_empty() || model.contains('/') { "gemini-1.5-flash" } else { model };
+    let actual_model = if model.is_empty() || model.contains('/') { "gemini-2.5-flash" } else { model };
     let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", actual_model, key);
     
     let mut parts = vec![
