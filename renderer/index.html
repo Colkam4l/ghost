@@ -2456,8 +2456,20 @@
         if (error) throw error;
         currentSession = data;
         localStorage.setItem('ghost_current_session_id', data.id);
-        // Refresh sidebar list in background
-        loadSessions().catch(e => console.warn('[GHOST] Session refresh error:', e));
+
+        // Immediately add to sidebar list without waiting for server refresh
+        sessionsList.unshift(data);
+        renderSidebarSessions();
+
+        // Silently sync full list in background without touching currentSession or messages
+        db.from('sessions').select('*').order('updated_at', { ascending: false })
+          .then(({ data: allSessions }) => {
+            if (allSessions) {
+              sessionsList = allSessions;
+              renderSidebarSessions();
+            }
+          })
+          .catch(e => console.warn('[GHOST] Background session sync error:', e));
       } catch (e) {
         console.error('[GHOST] Create session error:', e);
         showError('Failed to create new chat session: ' + e.message);
