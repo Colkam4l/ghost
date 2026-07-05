@@ -204,7 +204,7 @@ async fn call_universal_api(
 }
 
 async fn call_gemini_vision(client: &reqwest::Client, prompt: &str, image_data: Option<String>, key: &str, model: &str) -> Result<String, String> {
-    let actual_model = if model.is_empty() || model.contains('/') { "gemini-1.5-flash" } else { model };
+    let actual_model = if model.is_empty() || model.contains('/') { "gemini-2.5-flash" } else { model };
     let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", actual_model, key);
     
     let mut parts = vec![
