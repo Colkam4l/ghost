@@ -5,6 +5,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GHOST — AI Interview Copilot</title>
+  <!-- Markdown & Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *,
     *::before,
@@ -675,7 +682,6 @@
       border-radius: 6px;
       font-size: 10px;
       line-height: 1.6;
-      white-space: pre-wrap;
       word-break: break-word;
       position: relative;
     }
@@ -685,6 +691,7 @@
       border: 1px solid rgba(0, 200, 255, 0.15);
       border-left: 3px solid var(--cyan);
       color: var(--cyan);
+      white-space: pre-wrap;
     }
 
     .chat-msg.assistant {
@@ -692,6 +699,109 @@
       border: 1px solid rgba(0, 255, 136, 0.1);
       border-left: 3px solid var(--neon);
       color: var(--text-bright);
+    }
+
+    .chat-msg.assistant p {
+      margin-bottom: 8px;
+    }
+
+    .chat-msg.assistant p:last-child {
+      margin-bottom: 0;
+    }
+
+    .chat-msg.assistant ul,
+    .chat-msg.assistant ol {
+      margin-bottom: 8px;
+      padding-left: 16px;
+    }
+
+    .chat-msg.assistant li {
+      margin-bottom: 4px;
+    }
+
+    .chat-msg.assistant strong {
+      color: var(--text-bright);
+      font-weight: 700;
+    }
+
+    .chat-msg.assistant h1,
+    .chat-msg.assistant h2,
+    .chat-msg.assistant h3,
+    .chat-msg.assistant h4 {
+      color: var(--cyan);
+      margin: 12px 0 6px 0;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .chat-msg.assistant code {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--neon);
+      background: rgba(0, 255, 136, 0.08);
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+
+    /* Code Blocks */
+    .code-block-wrapper {
+      margin: 8px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-block-lang {
+      font-size: 7px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.5px;
+    }
+
+    .code-block-copy {
+      font-family: var(--font-mono);
+      font-size: 7px;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .code-block-copy:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .code-block-copy.copied {
+      border-color: var(--neon);
+      color: var(--neon);
+    }
+
+    .code-block-wrapper pre {
+      margin: 0;
+      padding: 8px;
+      overflow-x: auto;
+    }
+
+    .code-block-wrapper pre code {
+      background: transparent !important;
+      padding: 0 !important;
+      font-size: 9px;
+      color: var(--text-bright);
+      display: block;
     }
 
     .chat-msg .msg-label {
@@ -851,6 +961,124 @@
         transform: rotate(360deg);
       }
     }
+
+    /* ─── AUTH SCREEN ─── */
+    #auth-overlay {
+      position: absolute;
+      top: 36px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(8, 10, 14, 0.9);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    #auth-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    
+    .auth-container {
+      width: 320px;
+      padding: 30px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 0 24px rgba(0, 255, 136, 0.05);
+    }
+    
+    .auth-logo {
+      font-size: 40px;
+      margin-bottom: 12px;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    
+    .auth-title {
+      font-family: var(--font-ui);
+      font-weight: 800;
+      font-size: 16px;
+      color: var(--neon);
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    
+    .auth-subtitle {
+      font-size: 10px;
+      color: var(--dim);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    
+    .auth-btn {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-bright);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.25s ease;
+    }
+    
+    .auth-btn:hover {
+      background: rgba(0, 255, 136, 0.06);
+      border-color: var(--neon);
+      color: var(--neon);
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+    }
+    
+    .auth-btn img {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .auth-status {
+      font-size: 8px;
+      color: var(--dim);
+      margin-top: 16px;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 12px;
+      font-size: 9px;
+      color: var(--dim);
+    }
+
+    .user-avatar {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      object-fit: cover;
+    }
   </style>
 </head>
 
@@ -864,6 +1092,10 @@
         <span class="stealth-badge">STEALTH</span>
       </div>
       <div class="header-info">
+        <div id="user-profile-header" class="user-profile" style="display: none;">
+          <img id="user-avatar-img" class="user-avatar" src="" />
+          <span id="user-email-text"></span>
+        </div>
         <span id="platform-label">—</span>
         <span>PROT</span>
         <span class="prot-dot" id="prot-dot"></span>
@@ -872,6 +1104,28 @@
       <div class="controls">
         <button id="btn-minimize" title="Minimize">─</button>
         <button class="close-btn" id="btn-close" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay">
+      <div class="auth-container">
+        <div class="auth-logo">👻</div>
+        <div class="auth-title">GHOST COPILOT</div>
+        <div class="auth-subtitle">Sign in with Google to sync your chats and save your API settings across sessions.</div>
+        <button class="auth-btn" id="btn-google-login">
+          <svg style="width: 14px; height: 14px; vertical-align: middle;" viewBox="0 0 24 24">
+            <path fill="#ffffff" d="M21.35,11.1H12v2.7h5.38c-0.24,1.28 -0.96,2.37 -2.04,3.1v2.58h3.3c1.93,-1.78 3.04,-4.4 3.04,-7.4C21.68,11.83 21.56,11.45 21.35,11.1z" />
+            <path fill="#ea4335" d="M12,22c2.7,0 4.96,-0.9 6.62,-2.42l-3.3,-2.58c-0.9,0.6 -2.07,0.98 -3.32,0.98 -2.56,0 -4.72,-1.73 -5.5,-4.06l-3.41,2.64C3.12,18.77 7.22,22 12,22z" />
+            <path fill="#fbbc05" d="M6.5,13.92c-0.2,-0.6 -0.31,-1.24 -0.31,-1.92s0.11,-1.32 0.31,-1.92L3.09,7.44C2.3,9.02 1.84,10.79 1.84,12.68c0,1.89 0.46,3.66 1.25,5.24L6.5,13.92z" />
+            <path fill="#4285f4" d="M12,5.38c1.47,0 2.78,0.5 3.82,1.5l2.87,-2.87C16.96,2.44 14.7,1.5 12,1.5c-4.78,0 -8.88,3.23 -10.16,6.1l3.41,2.64C6.03,7.91 8.19,6.18 12,5.38z" />
+          </svg>
+          Sign in with Google
+        </button>
+        <button class="auth-btn" id="btn-work-offline" style="margin-top: 8px; border-color: var(--dim); color: var(--dim);">
+          Work Offline (Local Storage Only)
+        </button>
+        <div class="auth-status" id="auth-status-text">Connecting to database...</div>
       </div>
     </div>
 
@@ -917,7 +1171,7 @@
         </div>
       </div>
       <div class="panel-section">
-        <label class="panel-label">� GEMINI KEY (Vision / Screen)</label>
+        <label class="panel-label">📷 GEMINI KEY (Vision / Screen)</label>
         <div class="api-row">
           <input type="password" id="gemini-key" placeholder="AIza... (saved locally)" autocomplete="off"
             spellcheck="false" />
@@ -929,6 +1183,13 @@
         <div class="opacity-control">
           <input type="range" class="opacity-slider" id="opacity-slider" min="10" max="100" value="100" />
           <span class="opacity-val" id="opacity-val">100%</span>
+        </div>
+        <button class="toggle-prot-btn" id="toggle-prot-btn">🛡️ ON</button>
+      </div>
+      <div class="panel-section" style="margin-top: 4px; border-top: 1px solid var(--border); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 8px; color: var(--dim);" id="account-status-label">Local Mode</span>
+        <button id="btn-signout" class="toggle-prot-btn off" style="padding: 2px 6px;">🚪 Sign Out</button>
+      </div>       <span class="opacity-val" id="opacity-val">100%</span>
         </div>
         <button class="toggle-prot-btn" id="toggle-prot-btn">🛡️ ON</button>
       </div>
@@ -1042,31 +1303,31 @@
       problemInput.style.height = Math.min(problemInput.scrollHeight, 100) + 'px';
     });
 
-    // ─── API KEY (persisted in localStorage) ───
+    // ─── API KEY (persisted in localStorage + Supabase settings) ───
     if (apiKey) {
       apiKeyInput.value = apiKey;
     }
     apiKeyInput.addEventListener('input', () => {
       apiKey = apiKeyInput.value.trim();
-      if (apiKey) localStorage.setItem('ghost_api_key', apiKey);
+      saveUserSettings();
     });
     $('#clear-key-btn').addEventListener('click', () => {
       apiKey = '';
       apiKeyInput.value = '';
-      localStorage.removeItem('ghost_api_key');
+      saveUserSettings();
     });
 
-    // ─── GEMINI KEY (persisted in localStorage) ───
+    // ─── GEMINI KEY (persisted in localStorage + Supabase settings) ───
     const geminiKeyInput = $('#gemini-key');
     if (geminiKey) geminiKeyInput.value = geminiKey;
     geminiKeyInput.addEventListener('input', () => {
       geminiKey = geminiKeyInput.value.trim();
-      if (geminiKey) localStorage.setItem('ghost_gemini_key', geminiKey);
+      saveUserSettings();
     });
     $('#clear-gemini-btn').addEventListener('click', () => {
       geminiKey = '';
       geminiKeyInput.value = '';
-      localStorage.removeItem('ghost_gemini_key');
+      saveUserSettings();
     });
 
     // ─── MODEL TOGGLE ───
@@ -1569,20 +1830,70 @@
       return data.choices[0].message.content;
     }
 
+
+    // --- MARKDOWN & SYNTAX HIGHLIGHTING ---
+    const { marked, DOMPurify } = window;
+    const renderer = new marked.Renderer();
+    renderer.code = function(code, infostring, escaped) {
+      let text = code;
+      let lang = infostring;
+      if (typeof code === 'object') {
+        text = code.text;
+        lang = code.lang;
+      }
+      const displayLang = (lang || 'code').toUpperCase();
+      const highlighted = hljs.highlight(text, { language: hljs.getLanguage(lang) ? lang : 'plaintext' }).value;
+      return `
+        <div class="code-block-wrapper">
+          <div class="code-block-header">
+            <span class="code-block-lang">${displayLang}</span>
+            <button class="code-block-copy">COPY</button>
+          </div>
+          <pre><code class="hljs language-${lang || 'plaintext'}">${highlighted}</code></pre>
+        </div>
+      `;
+    };
+    marked.use({ renderer });
+
+    // Event delegation for code block copy buttons
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('code-block-copy')) {
+        const btn = e.target;
+        const wrapper = btn.closest('.code-block-wrapper');
+        const codeEl = wrapper.querySelector('pre code');
+        if (codeEl) {
+          navigator.clipboard.writeText(codeEl.innerText).then(() => {
+            btn.textContent = '✓';
+            btn.classList.add('copied');
+            setTimeout(() => {
+              btn.textContent = 'COPY';
+              btn.classList.remove('copied');
+            }, 1000);
+          });
+        }
+      }
+    });
+
     async function typewriter(text, targetEl) {
       const el = targetEl;
       const chars = text.split('');
       let i = 0;
+      let currentText = '';
       const speed = Math.max(1, Math.min(10, 2000 / chars.length));
       return new Promise(resolve => {
         function type() {
           if (i < chars.length) {
             const batch = Math.min(5, chars.length - i);
-            for (let j = 0; j < batch; j++) el.textContent += chars[i + j];
+            for (let j = 0; j < batch; j++) currentText += chars[i + j];
             i += batch;
+            el.innerHTML = DOMPurify.sanitize(marked.parse(currentText));
             output.scrollTop = output.scrollHeight;
             setTimeout(type, speed);
-          } else resolve();
+          } else {
+            el.innerHTML = DOMPurify.sanitize(marked.parse(text));
+            output.scrollTop = output.scrollHeight;
+            resolve();
+          }
         }
         type();
       });
@@ -1592,13 +1903,18 @@
     function addChatBubble(role, text, animate) {
       const div = document.createElement('div');
       div.className = `chat-msg ${role}`;
+      div.dataset.raw = text; // Store raw text for copying
       const label = role === 'user' ? '👤 YOU' : '👻 GHOST';
       div.innerHTML = `<div class="msg-label">${label}</div><div class="msg-body"></div><button class="msg-copy" onclick="copyMsg(this)">COPY</button>`;
       chatMessages.appendChild(div);
       output.scrollTop = output.scrollHeight;
       const body = div.querySelector('.msg-body');
       if (!animate) {
-        body.textContent = text;
+        if (role === 'user') {
+          body.textContent = text;
+        } else {
+          body.innerHTML = DOMPurify.sanitize(marked.parse(text));
+        }
       }
       return body;
     }
@@ -1624,12 +1940,13 @@
     }
 
     function copyMsg(btn) {
-      const body = btn.parentElement.querySelector('.msg-body');
-      navigator.clipboard.writeText(body.textContent).then(() => {
+      const rawText = btn.closest('.chat-msg').dataset.raw || '';
+      navigator.clipboard.writeText(rawText).then(() => {
         btn.textContent = '✓';
         setTimeout(() => { btn.textContent = 'COPY'; }, 1000);
       });
     }
+
     // Expose to onclick
     window.copyMsg = copyMsg;
 
@@ -1680,6 +1997,195 @@
         toggleProtBtn.classList.add('off');
       }
     });
+
+    // ─── AUTH CONTROLLER ───
+    let db = null;
+    let currentUser = null;
+
+    async function initSupabase() {
+      try {
+        const env = await window.ghostAPI.getEnv();
+        const url = env.SUPABASE_URL || '';
+        const key = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || '';
+
+        if (!url || !key) {
+          console.warn('[GHOST] Supabase credentials missing in .env');
+          $('#auth-status-text').textContent = 'Offline Mode (No .env config)';
+          return;
+        }
+
+        const { createClient } = supabase;
+        db = createClient(url, key, {
+          auth: {
+            flowType: 'pkce',
+            detectSessionInUrl: false, // handled manually via IPC callback
+            autoRefreshToken: true,
+            persistSession: true
+          }
+        });
+
+        // Handle OAuth callback event from Electron Main Process
+        window.ghostAPI.onOauthCallback(async ({ code, error }) => {
+          if (code) {
+            $('#auth-status-text').textContent = 'Exchanging code for session...';
+            try {
+              const { data, error: exchangeError } = await db.auth.exchangeCodeForSession(code);
+              if (exchangeError) throw exchangeError;
+              console.log('[GHOST] OAuth code exchange successful');
+            } catch (err) {
+              console.error('[GHOST] OAuth code exchange failed:', err);
+              showError('Authentication failed: ' + err.message);
+              $('#auth-status-text').textContent = 'Authentication failed.';
+            }
+          } else if (error) {
+            showError('OAuth Error: ' + error);
+            $('#auth-status-text').textContent = 'Authentication error: ' + error;
+          }
+        });
+
+        // Listen for auth state changes
+        db.auth.onAuthStateChange(async (event, session) => {
+          console.log('[GHOST] Auth state changed:', event, session);
+          if (session) {
+            currentUser = session.user;
+            $('#auth-overlay').classList.add('hidden');
+            $('#user-profile-header').style.display = 'flex';
+            $('#user-avatar-img').src = currentUser.user_metadata?.avatar_url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+            $('#user-email-text').textContent = currentUser.email.split('@')[0];
+            $('#account-status-label').textContent = `Cloud Sync: ${currentUser.email}`;
+
+            // Load and sync settings
+            await loadUserSettings();
+          } else {
+            currentUser = null;
+            $('#auth-overlay').classList.remove('hidden');
+            $('#user-profile-header').style.display = 'none';
+            $('#account-status-label').textContent = 'Local Mode';
+            $('#auth-status-text').textContent = 'Ready to Sign In';
+          }
+        });
+
+      } catch (err) {
+        console.error('[GHOST] Error initializing Supabase:', err);
+        $('#auth-status-text').textContent = 'Offline Fallback (Connection error)';
+      }
+    }
+
+    async function loadUserSettings() {
+      if (!db || !currentUser) return;
+      try {
+        const { data, error } = await db
+          .from('settings')
+          .select('*')
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (data) {
+          if (data.api_key) {
+            apiKey = data.api_key;
+            apiKeyInput.value = apiKey;
+            localStorage.setItem('ghost_api_key', apiKey);
+          }
+          if (data.gemini_key) {
+            geminiKey = data.gemini_key;
+            geminiKeyInput.value = geminiKey;
+            localStorage.setItem('ghost_gemini_key', geminiKey);
+          }
+          if (data.preferred_language) {
+            langSelect.value = data.preferred_language;
+          }
+        } else {
+          // Trigger first-time migration from localStorage to database
+          await saveUserSettings();
+        }
+      } catch (err) {
+        console.error('[GHOST] Failed to load cloud settings:', err);
+        showError('Cloud settings loading failed: ' + err.message);
+      }
+    }
+
+    async function saveUserSettings() {
+      // Local storage fallback always updated first
+      localStorage.setItem('ghost_api_key', apiKey);
+      localStorage.setItem('ghost_gemini_key', geminiKey);
+
+      if (!db || !currentUser) return;
+      try {
+        const { error } = await db
+          .from('settings')
+          .upsert({
+            user_id: currentUser.id,
+            api_key: apiKey,
+            gemini_key: geminiKey,
+            preferred_language: langSelect.value,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        if (error) throw error;
+      } catch (err) {
+        console.error('[GHOST] Cloud settings save failed:', err);
+        showError('Cloud settings save failed: ' + err.message);
+      }
+    }
+
+    // Google Login button action
+    $('#btn-google-login').addEventListener('click', async () => {
+      if (!db) {
+        showError('Database client not initialized. Work offline or configure your .env file.');
+        return;
+      }
+      $('#auth-status-text').textContent = 'Opening browser...';
+      try {
+        const { data, error } = await db.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: 'http://localhost:9999/auth/callback',
+            skipBrowserRedirect: true
+          }
+        });
+        if (error) throw error;
+        if (data && data.url) {
+          window.ghostAPI.openExternalUrl(data.url);
+        } else {
+          throw new Error('No authentication URL returned from database.');
+        }
+      } catch (err) {
+        console.error('[GHOST] OAuth initiation failed:', err);
+        showError('Login failed: ' + err.message);
+        $('#auth-status-text').textContent = 'Login failed.';
+      }
+    });
+
+    // Work Offline button action
+    $('#btn-work-offline').addEventListener('click', () => {
+      $('#auth-overlay').classList.add('hidden');
+      $('#account-status-label').textContent = 'Offline Mode (Local)';
+    });
+
+    // Sign Out button action
+    $('#btn-signout').addEventListener('click', async () => {
+      if (db) {
+        try {
+          await db.auth.signOut();
+        } catch (err) {
+          console.error('[GHOST] Sign out error:', err);
+          showError('Sign out error: ' + err.message);
+        }
+      } else {
+        $('#auth-overlay').classList.remove('hidden');
+      }
+    });
+
+    // Add listener for language preference change
+    langSelect.addEventListener('change', () => {
+      saveUserSettings();
+    });
+
+    // Run Supabase initialization
+    initSupabase();
 
     // ─── HELPERS ───
     function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('show'); }

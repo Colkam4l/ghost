@@ -1,6 +1,9 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, desktopCapturer, Tray, Menu, nativeImage, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const http = require('http');
 const { applyStealthAffinity, removeStealthAffinity, bindStealthEvents } = require('./stealth');
+
 
 // ─── MEMORY OPTIMIZATIONS ───
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=128');
@@ -256,19 +259,130 @@ ipcMain.on('stop-live-monitor', () => {
   stopLiveMonitor();
 });
 
+// ─── ENVIRONMENT CONFIG LOADER ───
+function loadEnv() {
+  const envPath = path.join(__dirname, '.env');
+  const env = {};
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+        if (match) {
+          let key = match[1];
+          let value = match[2] || '';
+          if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+          if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+          env[key] = value.trim();
+        }
+      }
+    } catch (e) {
+      console.error('[GHOST] Error parsing .env file:', e);
+    }
+  }
+  return env;
+}
+
+ipcMain.handle('get-env', () => {
+  return loadEnv();
+});
+
+ipcMain.on('open-external-url', (event, url) => {
+  shell.openExternal(url);
+});
+
+// ─── OAUTH LOCAL REDIRECT SERVER ───
+let oauthServer = null;
+
+function startOauthServer() {
+  oauthServer = http.createServer((req, res) => {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      if (url.pathname === '/auth/callback') {
+        const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`
+          <html>
+            <head>
+              <title>GHOST Auth Success</title>
+              <style>
+                body {
+                  font-family: 'Consolas', 'Courier New', monospace;
+                  background: #080a0e;
+                  color: #c9d1d9;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100vh;
+                  margin: 0;
+                }
+                .card {
+                  text-align: center;
+                  border: 1px solid #1a2233;
+                  padding: 30px;
+                  border-radius: 8px;
+                  background: #0d1117;
+                  box-shadow: 0 0 16px rgba(0, 255, 136, 0.1);
+                }
+                h1 { color: #00ff88; margin: 0 0 10px 0; font-size: 20px; }
+                p { font-size: 11px; margin: 0; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <h1>👻 GHOST Auth</h1>
+                <p>Authentication successful! You can close this tab and return to the GHOST app.</p>
+              </div>
+            </body>
+          </html>
+        `);
+
+        if (win) {
+          win.webContents.send('oauth-callback', { code, error });
+        }
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    } catch (e) {
+      console.error('[GHOST] HTTP Server error:', e);
+      res.writeHead(500);
+      res.end();
+    }
+  });
+
+  oauthServer.listen(9999, '127.0.0.1', () => {
+    console.log('[GHOST] Local OAuth callback server listening on http://localhost:9999');
+  });
+}
+
+function stopOauthServer() {
+  if (oauthServer) {
+    oauthServer.close();
+    oauthServer = null;
+  }
+}
+
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  startOauthServer();
 });
 
 app.on('window-all-closed', () => {
   stopLiveMonitor();
+  stopOauthServer();
   globalShortcut.unregisterAll();
   app.quit();
 });
 
 app.on('will-quit', () => {
   stopLiveMonitor();
+  stopOauthServer();
   globalShortcut.unregisterAll();
   if (tray) { tray.destroy(); tray = null; }
 });

@@ -19,4 +19,9 @@ contextBridge.exposeInMainWorld('ghostAPI', {
     onLiveFrame: (callback) => {
         ipcRenderer.on('live-frame', (event, dataUrl) => callback(dataUrl));
     },
+    openExternalUrl: (url) => ipcRenderer.send('open-external-url', url),
+    getEnv: () => ipcRenderer.invoke('get-env'),
+    onOauthCallback: (callback) => {
+        ipcRenderer.on('oauth-callback', (event, data) => callback(data));
+    },
 });

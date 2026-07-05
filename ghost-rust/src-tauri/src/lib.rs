@@ -4,9 +4,53 @@ use windows::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WDA_EXCL
 use windows::Win32::Foundation::HWND;
 
 use std::sync::Mutex;
+use std::fs;
+use std::path::Path;
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::thread;
 use tauri::{Emitter, Manager, State};
 
 struct ProtectionState(Mutex<bool>);
+
+#[tauri::command]
+fn open_in_browser(url: String) -> Result<(), String> {
+    tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_env() -> Result<std::collections::HashMap<String, String>, String> {
+    let mut env = std::collections::HashMap::new();
+    let paths_to_try = vec![
+        Path::new(".env").to_path_buf(),
+        Path::new("..").join(".env"),
+    ];
+    
+    for path in paths_to_try {
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(path) {
+                for line in content.lines() {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    if let Some(pos) = line.find('=') {
+                        let key = line[..pos].trim().to_string();
+                        let mut value = line[pos + 1..].trim().to_string();
+                        if value.starts_with('"') && value.ends_with('"') {
+                            value = value[1..value.len() - 1].to_string();
+                        } else if value.starts_with('\'') && value.ends_with('\'') {
+                            value = value[1..value.len() - 1].to_string();
+                        }
+                        env.insert(key, value);
+                    }
+                }
+                return Ok(env);
+            }
+        }
+    }
+    Ok(env)
+}
 
 #[tauri::command]
 fn get_platform() -> String {
@@ -191,6 +235,101 @@ async fn call_gemini_vision(client: &reqwest::Client, prompt: &str, image_data: 
     Ok(text.to_string())
 }
 
+fn start_rust_oauth_server(app_handle: tauri::AppHandle) {
+    thread::spawn(move || {
+        let listener = match TcpListener::bind("127.0.0.1:1420") {
+            Ok(l) => l,
+            Err(e) => {
+                println!("[TAURI] Failed to bind OAuth server to 127.0.0.1:1420: {}", e);
+                return;
+            }
+        };
+        println!("[TAURI] OAuth loopback listener bound to http://127.0.0.1:1420");
+        
+        for stream in listener.incoming() {
+            if let Ok(mut stream) = stream {
+                let mut buffer = [0; 1024];
+                if stream.read(&mut buffer).is_ok() {
+                    let request = String::from_utf8_lossy(&buffer[..]);
+                    if let Some(first_line) = request.lines().next() {
+                        if first_line.starts_with("GET /auth/callback") {
+                            let mut code = None;
+                            let mut error = None;
+                            
+                            if let Some(query_start) = first_line.find('?') {
+                                if let Some(query_end) = first_line[query_start..].find(' ') {
+                                    let query = &first_line[query_start + 1..query_start + query_end];
+                                    for param in query.split('&') {
+                                        let parts: Vec<&str> = param.split('=').collect();
+                                        if parts.len() == 2 {
+                                            if parts[0] == "code" {
+                                                code = Some(parts[1].to_string());
+                                            } else if parts[0] == "error" {
+                                                error = Some(parts[1].to_string());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if let Some(c) = code.clone() {
+                                let _ = app_handle.emit("oauth-callback", serde_json::json!({ "code": c }));
+                            } else if let Some(e) = error.clone() {
+                                let _ = app_handle.emit("oauth-callback", serde_json::json!({ "error": e }));
+                            }
+                            
+                            let response_body = r#"
+                                <html>
+                                <head>
+                                  <title>GHOST Auth Success</title>
+                                  <style>
+                                    body {
+                                      font-family: 'Consolas', 'Courier New', monospace;
+                                      background: #080a0e;
+                                      color: #c9d1d9;
+                                      display: flex;
+                                      flex-direction: column;
+                                      align-items: center;
+                                      justify-content: center;
+                                      height: 100vh;
+                                      margin: 0;
+                                    }
+                                    .card {
+                                      text-align: center;
+                                      border: 1px solid #1a2233;
+                                      padding: 30px;
+                                      border-radius: 8px;
+                                      background: #0d1117;
+                                      box-shadow: 0 0 16px rgba(0, 255, 136, 0.1);
+                                    }
+                                    h1 { color: #00ff88; margin: 0 0 10px 0; font-size: 20px; }
+                                    p { font-size: 11px; margin: 0; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="card">
+                                    <h1>👻 GHOST-RUST Auth</h1>
+                                    <p>Authentication successful! You can close this tab and return to GHOST.</p>
+                                  </div>
+                                </body>
+                                </html>
+                            "#;
+                            
+                            let response = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/html; charset=utf-8\r\n\r\n{}",
+                                response_body.len(),
+                                response_body
+                            );
+                            let _ = stream.write_all(response.as_bytes());
+                            let _ = stream.flush();
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -201,9 +340,14 @@ pub fn run() {
             get_platform,
             toggle_protection,
             capture_screen,
-            process_ai_request
+            process_ai_request,
+            open_in_browser,
+            get_env
         ])
         .setup(|app| {
+            // Start local OAuth server
+            start_rust_oauth_server(app.handle().clone());
+
             // Register Shortcuts
             use tauri_plugin_global_shortcut::{ShortcutState};
             let ctrl_shift_c = "Ctrl+Shift+C".parse().unwrap();
