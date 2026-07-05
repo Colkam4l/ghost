@@ -1748,10 +1748,14 @@
           }
         });
 
+        // Guard to only run session load once per login
+        let sessionLoadedForUser = null;
+
         // Listen for auth state changes
         db.auth.onAuthStateChange(async (event, session) => {
-          console.log('[GHOST] Auth state changed:', event, session);
+          console.log('[GHOST] Auth state changed:', event, session?.user?.id);
           if (session) {
+            const isSameUser = sessionLoadedForUser === session.user.id;
             currentUser = session.user;
             $('#auth-overlay').classList.add('hidden');
             $('#user-profile-header').style.display = 'flex';
@@ -1759,14 +1763,17 @@
             $('#user-email-text').textContent = currentUser.email.split('@')[0];
             $('#account-status-label').textContent = `Cloud Sync: ${currentUser.email}`;
 
-            // Load and sync settings
-            await loadUserSettings();
-
-            // Load multi-chat sessions and start realtime updates
-            await loadSessions();
-            setupRealtimeSync();
+            if (!isSameUser) {
+              sessionLoadedForUser = session.user.id;
+              // Load and sync settings
+              await loadUserSettings();
+              // Load multi-chat sessions and start realtime updates
+              await loadSessions();
+              setupRealtimeSync();
+            }
           } else {
             currentUser = null;
+            sessionLoadedForUser = null;
             $('#auth-overlay').classList.remove('hidden');
             $('#user-profile-header').style.display = 'none';
             $('#account-status-label').textContent = 'Local Mode';
@@ -2007,15 +2014,23 @@
       }
       
       try {
+        console.log('[GHOST] loadSessions: querying Supabase for user', currentUser.id);
         const { data, error } = await db
           .from('sessions')
           .select('*')
           .order('updated_at', { ascending: false });
           
-        if (error) throw error;
+        if (error) {
+          console.error('[GHOST] loadSessions ERROR:', error);
+          showError('Session load error: ' + error.message + ' (code: ' + error.code + ')');
+          return;
+        }
         
+        console.log('[GHOST] loadSessions: got', data?.length, 'sessions:', JSON.stringify(data?.map(s => s.id)));
         sessionsList = data || [];
+
         if (sessionsList.length === 0) {
+          console.log('[GHOST] loadSessions: no sessions found, creating new one');
           await createNewSession();
           return;
         }
@@ -2026,8 +2041,8 @@
         renderSidebarSessions();
         await loadSessionMessages(currentSession.id);
       } catch (e) {
-        console.error('[GHOST] Load sessions error:', e);
-        showError('Load sessions error: ' + e.message);
+        console.error('[GHOST] Load sessions exception:', e);
+        showError('Load sessions exception: ' + e.message);
       }
     }
 
