@@ -1939,19 +1939,21 @@
     $('#btn-new-chat').addEventListener('click', createNewSession);
 
     async function createNewSession() {
+      // Immediately clear the UI for a snappy feel
+      conversationHistory = [];
+      renderFullHistory();
+      updateSessionInfo();
+      closeSidebar();
+
       if (!db || !currentUser) {
         const offlineId = 'offline-' + Date.now();
         const newSess = { id: offlineId, title: 'New Chat', updated_at: new Date().toISOString() };
         sessionsList.unshift(newSess);
         currentSession = newSess;
-        conversationHistory = [];
         localStorage.setItem('ghost_chat_history', '[]');
         localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
         localStorage.setItem('ghost_current_session_id', offlineId);
         renderSidebarSessions();
-        renderFullHistory();
-        updateSessionInfo();
-        closeSidebar();
         return;
       }
       
@@ -1968,10 +1970,8 @@
         if (error) throw error;
         currentSession = data;
         localStorage.setItem('ghost_current_session_id', data.id);
-        conversationHistory = [];
-        saveHistory();
-        await loadSessions();
-        closeSidebar();
+        // Refresh sidebar list in background
+        loadSessions().catch(e => console.warn('[GHOST] Session refresh error:', e));
       } catch (e) {
         console.error('[GHOST] Create session error:', e);
         showError('Failed to create new chat session: ' + e.message);
@@ -2178,13 +2178,13 @@
         const newTitle = firstMessageText.slice(0, 40) + (firstMessageText.length > 40 ? '...' : '');
         currentSession.title = newTitle;
         
+        // Update sidebar immediately for instant feedback
+        const sessIndex = sessionsList.findIndex(s => s.id === currentSession.id);
+        if (sessIndex !== -1) sessionsList[sessIndex].title = newTitle;
+        renderSidebarSessions();
+
         if (currentSession.id.startsWith('offline-')) {
-          const sessIndex = sessionsList.findIndex(s => s.id === currentSession.id);
-          if (sessIndex !== -1) {
-            sessionsList[sessIndex].title = newTitle;
-            localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
-          }
-          renderSidebarSessions();
+          localStorage.setItem('ghost_offline_sessions', JSON.stringify(sessionsList));
           return;
         }
         
