@@ -1430,6 +1430,7 @@
         conversationHistory = [];
         $('#chat-messages').innerHTML = '';
         saveHistory();
+        updateSessionInfo();
       }
     };
 
@@ -1604,6 +1605,7 @@
 
       addChatBubble('user', msg);
       conversationHistory.push({ role: 'user', content: msg });
+      updateSessionInfo();
       await saveMessageToCloud('user', msg);
       if (conversationHistory.length === 1) {
         await handleAutoTitle(prompt || '[Screen Analysis]');
@@ -1632,6 +1634,7 @@
         await typewriter(response, assistantBubble);
         conversationHistory.push({ role: 'assistant', content: response });
         saveHistory();
+        updateSessionInfo();
         await saveMessageToCloud('assistant', response);
       } catch (e) {
         showError(e);
