@@ -1701,6 +1701,14 @@
       localStorage.setItem('ghost_chat_history', JSON.stringify(conversationHistory.slice(-20)));
     }
 
+    function updateSessionInfo() {
+      const sessionInfoEl = $('#session-info');
+      if (sessionInfoEl) {
+        const c = conversationHistory.length;
+        sessionInfoEl.textContent = `Session: ${c} msg${c !== 1 ? 's' : ''}`;
+      }
+    }
+
     // ─── AUTH CONTROLLER ───
     let db = null;
     let currentUser = null;
